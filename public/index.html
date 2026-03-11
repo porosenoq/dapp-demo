@@ -1,0 +1,2661 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpsDesk</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Mulish:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #eeecea;
+  --surface3: #e6e4df;
+  --border: #e0ddd6;
+  --border2: #ccc9c0;
+  --text: #18170f;
+  --text2: #6b6858;
+  --text3: #9e9b8e;
+  --accent: #1a56db;
+  --accent-bg: #eef3ff;
+  --accent-hover: #1648c0;
+  --green: #0f7b4c;
+  --green-bg: #edfaf3;
+  --red: #c8281c;
+  --red-bg: #fff1f0;
+  --amber: #b45309;
+  --amber-bg: #fffbeb;
+  --white-barrier: #6b6858;
+  --yellow-barrier: #a16207;
+  --grey-barrier: #4b5563;
+  --r: 10px;
+  --r-sm: 6px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Mulish',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.55;min-height:100vh}
+h1,h2,h3,.syne{font-family:'Syne',sans-serif}
+.mono{font-family:'DM Mono',monospace}
+
+/* ── Login ── */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--bg);}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;max-width:400px;width:100%;box-shadow:var(--shadow-md);}
+.login-logo{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:6px;letter-spacing:-0.03em;}
+.login-logo span{color:var(--accent);}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
+.login-error{background:var(--red-bg);border:1px solid #fecaca;color:var(--red);font-size:13px;padding:10px 14px;border-radius:var(--r-sm);margin-bottom:16px;display:none;}
+
+/* ── App Shell ── */
+#app-shell{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:200;}
+.topbar-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.02em;}
+.topbar-logo span{color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.user-chip{display:flex;align-items:center;gap:8px;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;}
+.user-chip .role-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;}
+.role-tag.admin{background:#fef3c7;color:#92400e;}
+.role-tag.dispatcher{background:var(--accent-bg);color:var(--accent);}
+.role-tag.worker{background:var(--green-bg);color:var(--green);}
+
+.nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 20px;overflow-x:auto;gap:0;}
+.nav-btn{padding:11px 15px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;letter-spacing:-0.01em;}
+.nav-btn:hover{color:var(--text);}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border-radius:10px;font-size:10px;font-weight:700;min-width:16px;height:16px;padding:0 4px;margin-left:4px;font-family:'DM Mono',monospace;}
+
+.main{flex:1;padding:24px 20px;max-width:1120px;margin:0 auto;width:100%;}
+.section{display:none;animation:fadeIn .18s ease;}
+.section.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;}
+.card-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Mulish',sans-serif;transition:all .15s;white-space:nowrap;letter-spacing:0;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-hover);}
+.btn-ghost{background:var(--surface);border:1px solid var(--border2);color:var(--text);}
+.btn-ghost:hover{background:var(--surface2);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#0a6340;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-red:hover{background:#a82016;}
+.btn-amber{background:var(--amber);color:#fff;}
+.btn-amber:hover{background:#92450a;}
+.btn-sm{padding:4px 11px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ── Forms ── */
+.fg{margin-bottom:14px;}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+.fi,.fs,.ft{width:100%;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:13px;font-family:'Mulish',sans-serif;background:var(--surface);color:var(--text);outline:none;transition:border .15s;}
+.fi:focus,.fs:focus,.ft:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,86,219,.08);}
+.ft{resize:vertical;min-height:68px;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ── Stat Cards ── */
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);}
+.stat-val{font-size:30px;font-weight:700;font-family:'Syne',sans-serif;line-height:1;}
+.stat-lbl{font-size:12px;color:var(--text2);margin-top:3px;}
+.stat-hint{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* ── People ── */
+.ppl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;}
+.pcard{border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s;background:var(--surface);}
+.pcard:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,86,219,.06);}
+.pcard.present{border-color:#6ee7b7;background:var(--green-bg);}
+.pcard.absent{opacity:.55;}
+.pcard.sel{border-color:var(--accent);background:var(--accent-bg);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;font-family:'Syne',sans-serif;}
+.pname{font-size:13px;font-weight:600;}
+.prole{font-size:11px;color:var(--text2);}
+
+/* ── Tasks ── */
+.tcard{border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;margin-bottom:10px;background:var(--surface);transition:box-shadow .15s;}
+.drag-member{user-select:none;}
+.drag-member:hover{background:var(--surface2);border-radius:4px;}
+.drag-member[draggable]:active{cursor:grabbing;}
+.tcard:hover{box-shadow:var(--shadow-md);}
+.tcard-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.tcard-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;}
+.tcard-meta{font-size:12px;color:var(--text2);margin-top:2px;}
+.team-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.tstatus{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;flex-shrink:0;}
+.tstatus.active{background:var(--accent-bg);color:var(--accent);}
+.tstatus.done{background:var(--green-bg);color:var(--green);}
+.tstatus.archived{background:var(--surface2);color:var(--text2);}
+
+/* ── Barrier colors ── */
+.btype-white{background:#f8f8f6;border:1px solid #ccc;color:#444;}
+.btype-yellow{background:#fef9c3;border:1px solid #fde047;color:#854d0e;}
+.btype-grey{background:#f1f5f9;border:1px solid #94a3b8;color:#374151;}
+.btype-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+
+/* ── Barrier table ── */
+.btable{width:100%;border-collapse:collapse;}
+.btable th{text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);}
+.btable td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.btable tr:last-child td{border-bottom:none;}
+.btable tr:hover td{background:var(--surface2);}
+.dep-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.dep-badge.out{background:var(--amber-bg);color:var(--amber);}
+.dep-badge.in{background:var(--green-bg);color:var(--green);}
+
+/* ── Map ── */
+#dispatch-map{height:210px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border);margin-bottom:4px;}
+.worker-map-wrap{height:290px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border);margin-bottom:14px;}
+
+/* ── Notifications ── */
+#notif-tray{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:310px;}
+.notif{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow-md);animation:notifIn .2s ease;display:flex;gap:10px;align-items:flex-start;}
+.notif.nt-task{border-left:3px solid var(--accent);}
+.notif.nt-ok{border-left:3px solid var(--green);}
+.notif.nt-warn{border-left:3px solid var(--amber);}
+.notif-ico{font-size:16px;flex-shrink:0;margin-top:1px;}
+.notif-body{flex:1;}
+.notif-title{font-size:13px;font-weight:700;}
+.notif-msg{font-size:12px;color:var(--text2);margin-top:1px;}
+.notif-x{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0;align-self:flex-start;}
+@keyframes notifIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+
+/* ── Modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);}
+.modal{background:var(--surface);border-radius:var(--r);padding:26px;max-width:500px;width:100%;box-shadow:var(--shadow-md);max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;letter-spacing:-.02em;}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+
+/* ── Misc ── */
+.pg-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;margin-bottom:3px;}
+.pg-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
+.divider{height:1px;background:var(--border);margin:18px 0;}
+.empty{text-align:center;padding:44px 20px;color:var(--text2);}
+.empty-ico{font-size:30px;margin-bottom:8px;}
+.empty-t{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text);}
+.empty-d{font-size:13px;margin-top:3px;}
+.info-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.info-row:last-child{border-bottom:none;}
+.info-lbl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;min-width:78px;padding-top:2px;}
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.cb-group{display:flex;flex-wrap:wrap;gap:6px;}
+.cb-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;user-select:none;}
+.cb-chip:hover{border-color:var(--accent);}
+.cb-chip.chk{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);font-weight:700;}
+.cb-chip input{display:none;}
+.pb{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px;}
+.pb-fill{height:100%;border-radius:3px;transition:width .3s;}
+.pb-blue{background:var(--accent);}
+.pb-green{background:var(--green);}
+.section-lbl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 10px;}
+.worker-task-header{background:var(--accent);color:#fff;padding:20px;border-radius:var(--r) var(--r) 0 0;}
+.worker-task-body{padding:20px;}
+.worker-task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-md);}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab-btn{padding:8px 16px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── Admin ── */
+.admin-table{width:100%;border-collapse:collapse;}
+.admin-table th{text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);}
+.admin-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.admin-table tr:last-child td{border-bottom:none;}
+.admin-table tr:hover td{background:var(--surface2);}
+
+@media(max-width:640px){
+  /* Layout */
+  .main{padding:12px 10px;}
+  .g2,.g3,.g4{grid-template-columns:1fr;}
+  .fr{grid-template-columns:1fr;}
+  .ppl-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));}
+
+  /* Topbar */
+  .topbar{padding:0 10px;height:48px;}
+  .topbar-logo{font-size:14px;}
+  .user-chip{padding:4px 9px;font-size:11px;gap:5px;}
+  .user-chip .role-tag{display:none;}
+  .btn-ghost.btn-sm{padding:4px 8px;font-size:11px;}
+
+  /* Nav — horizontal scroll with larger touch targets */
+  .nav{padding:0 4px;gap:0;-webkit-overflow-scrolling:touch;}
+  .nav-btn{padding:12px 10px;font-size:12px;}
+
+  /* Page titles */
+  .pg-title{font-size:18px;}
+  .pg-sub{font-size:12px;margin-bottom:14px;}
+
+  /* Cards */
+  .card{padding:14px 12px;}
+  .card-hd{margin-bottom:12px;}
+
+  /* Stat cards — 2 columns on mobile */
+  .g4{grid-template-columns:1fr 1fr;}
+  .stat{padding:12px 14px;}
+  .stat-val{font-size:24px;}
+
+  /* Modals */
+  .modal-bg{padding:10px;}
+  .modal{padding:18px 16px;border-radius:var(--r);}
+
+  /* Tables — horizontal scroll */
+  .admin-table,.btable{font-size:12px;}
+  .admin-table th,.btable th{padding:6px 8px;font-size:10px;}
+  .admin-table td,.btable td{padding:8px 8px;}
+
+  /* Buttons in table cells */
+  .admin-table td .btn,.btable td .btn{padding:2px 6px;font-size:10px;}
+
+  /* Teams 3-col → stack vertically */
+  #sec-teams > div[style*="grid-template-columns:1fr 2fr 1fr"]{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Teams — reorder: vehicles top, then workers, then teams */
+  #teams-vehicles-panel{order:-2;}
+  #teams-avail-card{order:-1;}
+  #teams-list{order:0;}
+
+  /* Drag members — bigger touch targets + visual hint */
+  .drag-member{padding:10px 8px !important;min-height:48px;}
+  .drag-member::after{content:'≡';float:right;color:var(--text3);font-size:18px;line-height:1.4;}
+
+  /* Drag vehicles — bigger */
+  .drag-vehicle{min-height:48px;padding:10px 8px !important;}
+
+  /* Schedule table */
+  #sec-schedule .pg-title + div{flex-direction:column;align-items:flex-start !important;}
+
+  /* Notifications — full width on mobile */
+  #notif-tray{left:10px;right:10px;max-width:none;bottom:10px;}
+
+  /* Tasks tab bar — scrollable */
+  .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tab-btn{white-space:nowrap;padding:8px 12px;font-size:12px;}
+
+  /* Dispatch map */
+  #dispatch-map{height:180px;}
+
+  /* Buttons — full width where appropriate */
+  .modal-footer{flex-direction:column-reverse;}
+  .modal-footer .btn{width:100%;justify-content:center;}
+
+  /* Barrier stats */
+  #barrier-type-stats .g3{grid-template-columns:1fr 1fr 1fr;}
+
+  /* Hide some less important columns on mobile in tables */
+  .admin-table .hide-mobile,.btable .hide-mobile{display:none;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Ops<span>Desk</span></div>
+    <div class="login-sub">Система за управление на операции — Влезте в профила си</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="fg">
+      <label class="fl">Потребителско име</label>
+      <input class="fi" id="li-user" placeholder="Въведете потребителско име" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="fg">
+      <label class="fl">Парола</label>
+      <input class="fi" type="password" id="li-pass" placeholder="Въведете парола" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px;" onclick="doLogin()">Вход →</button>
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text3);text-align:center;">
+      Администратор по подразбиране: <span class="mono" style="color:var(--text2);">admin / admin123</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════════ -->
+<div id="app-shell">
+  <div class="topbar">
+    <div class="topbar-logo">Ops<span>Desk</span></div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <span id="tb-username">—</span>
+        <span class="role-tag" id="tb-role">—</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Изход</button>
+    </div>
+  </div>
+
+  <div class="nav" id="main-nav">
+    <!-- rendered by renderNav() -->
+  </div>
+
+  <div class="main">
+    <!-- Dashboard -->
+    <div class="section" id="sec-dashboard">
+      <div class="pg-title">Dashboard</div>
+      <div class="pg-sub" id="dash-date"></div>
+      <div class="g4" style="margin-bottom:16px;" id="dash-stats"></div>
+      <div class="g2" id="dash-bottom"></div>
+    </div>
+
+    <!-- Attendance -->
+    <div class="section" id="sec-attendance">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div class="pg-title">Присъствие</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="markAll(true)">Всички присъстват</button>
+          <button class="btn btn-ghost btn-sm" onclick="markAll(false)">Изчисти всички</button>
+        </div>
+      </div>
+      <div class="pg-sub">Натиснете върху служител, за да промените присъствието му за днес</div>
+      <div class="card" style="margin-bottom:16px;" id="att-summary"></div>
+      <div class="section-lbl">Диспечери</div>
+      <div class="ppl-grid" id="att-dispatchers"></div>
+      <div class="section-lbl">Работници</div>
+      <div class="ppl-grid" id="att-workers"></div>
+    </div>
+
+    <!-- Dispatch -->
+    <div class="section" id="sec-dispatch">
+      <div class="pg-title">Изпращане</div>
+      <div class="pg-sub">Изпратете сформиран екип на задача</div>
+      <div class="g2" style="align-items:start;">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-hd"><div class="card-title">1 — Изберете екип</div></div>
+            <div id="dispatch-team-sel"></div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><div class="card-title">2 — Детайли на задачата</div></div>
+            <div class="fg">
+              <label class="fl">Наименование на задачата</label>
+              <input class="fi" id="tn" placeholder="напр. Монтаж на прегради — Северна порта">
+            </div>
+            <div class="fg">
+              <label class="fl">Бележки / Инструкции</label>
+              <textarea class="ft" id="tnotes" placeholder="Специфични инструкции..."></textarea>
+            </div>
+            <div class="fr">
+              <div class="fg">
+                <label class="fl">Адрес</label>
+                <input class="fi" id="taddr" placeholder="Улица и номер..." oninput="geocodeAddr()">
+              </div>
+              <div class="fg">
+                <label class="fl">Координати</label>
+                <input class="fi" id="tcoords" placeholder="ширина, дължина" oninput="parseCoordsInput()">
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:10px;min-height:18px;" id="geo-status"></div>
+            <div id="dispatch-map"></div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Натиснете картата, за да поставите маркер</div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="dispatchTeam()">🚀 Изпрати екипа</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <div><div class="card-title">Днешни изпращания</div><div class="card-sub" id="today-dispatch-count">—</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="showSection('tasks');switchTaskTab('today')">Виж всички →</button>
+          </div>
+          <div id="today-dispatches"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="section" id="sec-tasks">
+      <div class="pg-title">Задачи</div>
+      <div class="pg-sub" id="tasks-sub"></div>
+      <!-- Dispatcher: tabs for active/completed/archive/today -->
+      <div id="tasks-dispatcher-view">
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tab-active" onclick="switchTaskTab('active')">Активни <span class="nav-badge" id="tcount-active">0</span></button>
+          <button class="tab-btn" id="tab-done" onclick="switchTaskTab('done')">Завършени <span class="nav-badge" id="tcount-done" style="background:var(--green);">0</span></button>
+          <button class="tab-btn" id="tab-archive" onclick="switchTaskTab('archive')">Архив</button>
+          <button class="tab-btn" id="tab-today" onclick="switchTaskTab('today')">Днес</button>
+        </div>
+        <div id="tasks-active-list"></div>
+        <div id="tasks-done-list" style="display:none;"></div>
+        <div id="tasks-archive-list" style="display:none;"></div>
+        <div id="tasks-today-list" style="display:none;"></div>
+      </div>
+      <!-- Worker: my task -->
+      <div id="tasks-worker-view" style="display:none;">
+        <div id="worker-task-display"></div>
+      </div>
+    </div>
+
+    <!-- Barriers -->
+    <div class="section" id="sec-barriers">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div class="pg-title">Инвентар на прегради</div>
+        <button class="btn btn-primary" id="deploy-barriers-btn" onclick="openDeployModal()" style="display:none;">+ Разгърни прегради</button>
+      </div>
+      <div class="pg-sub">Следи тръбно решетъчни прегради — Бели, Жълти, Сиви</div>
+      <div id="barrier-type-stats" style="margin-bottom:16px;"></div>
+      <div class="card" id="barrier-log-card"></div>
+    </div>
+
+    <!-- График -->
+    <div class="section" id="sec-schedule">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div class="pg-title">График</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="schedPrevMonth()">← Предишен</button>
+          <span id="sched-month-label" style="font-family:'Syne',sans-serif;font-weight:600;font-size:14px;min-width:130px;text-align:center;"></span>
+          <button class="btn btn-ghost btn-sm" onclick="schedNextMonth()">Следващ →</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="applyTodayFromSchedule()">📋 Приложи за днес</button>
+      </div>
+      <div class="pg-sub">Натиснете клетка за да изберете смяна. Промените се записват автоматично.</div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#dbeafe;color:#1d4ed8;">Д — Дневна 08–20</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ede9fe;color:#6d28d9;">Н — Нощна 20–08</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#dcfce7;color:#15803d;">Р — Редовна 08–17</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fef9c3;color:#a16207;">О — Отпуска</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ffedd5;color:#c2410c;">К — Командировка</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fee2e2;color:#991b1b;">Б — Болничен</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--surface2);color:var(--text3);">(празно) — Почивен</span>
+      </div>
+
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);">
+        <table id="sched-table" style="border-collapse:collapse;min-width:100%;"></table>
+      </div>
+    </div>
+
+    <!-- Екипи за деня -->
+    <div class="section" id="sec-teams">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div>
+          <div class="pg-title">Екипи за деня</div>
+          <div class="pg-sub" id="teams-date-sub"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="teams-reset-btn" onclick="resetTeams()" style="display:none;">↺ Нулирай</button>
+          <button class="btn btn-primary" id="teams-form-btn" onclick="openTeamFormModal()">+ Нов екип</button>
+        </div>
+      </div>
+      <div id="teams-locked-notice" style="display:none;background:var(--amber-bg);border:1px solid #fde68a;border-radius:var(--r-sm);padding:10px 16px;font-size:13px;color:var(--amber);margin-bottom:14px;">
+        💡 Влачете служители между екипите или обратно в списъка. Екипи с активна задача са заключени.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;align-items:start;">
+        <div class="card" id="teams-avail-card" style="transition:border-color .2s;"
+            ondragover="teamDragOver(event)"
+            ondragenter="event.preventDefault();if(_dragFromIdx!=='avail')this.style.borderColor='var(--accent)'"
+            ondragleave="if(!this.contains(event.relatedTarget))this.style.borderColor=''"
+            ondrop="event.preventDefault();teamDropToPool();this.style.borderColor=''">
+          <div class="card-hd"><div class="card-title">Присъстващи работници</div><div class="card-sub" id="teams-avail-count"></div></div>
+          <div id="teams-avail-list"></div>
+        </div>
+        <div id="teams-list"></div>
+        <div class="card" id="teams-vehicles-panel">
+          <div class="card-hd"><div class="card-title">Автомобили</div><div class="card-sub">Влачете към екипите</div></div>
+          <div id="teams-vehicles-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Автомобили -->
+    <div class="section" id="sec-vehicles">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div class="pg-title">Автомобили</div>
+        <button class="btn btn-primary" onclick="openVehicleModal(null)">+ Добави автомобил</button>
+      </div>
+      <div class="pg-sub">Управление на автомобилния парк</div>
+      <div class="card" style="margin-top:14px;">
+        <div id="vehicles-list"></div>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div class="section" id="sec-admin">
+      <div class="pg-title">Администраторски панел</div>
+      <div class="pg-sub">Управление на всички потребителски акаунти</div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+        <button class="btn btn-primary" onclick="openAddUserModal()">+ Нов акаунт</button>
+      </div>
+      <div class="card">
+        <div id="admin-users-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Deploy Barriers -->
+<div id="modal-deploy" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">Разгърни прегради</div>
+    <div class="fg">
+      <label class="fl">Вид на преградата</label>
+      <select class="fs" id="dep-type" onchange="updateDeployHint()">
+        <option value="white">⬜ Бели</option>
+        <option value="yellow">🟨 Жълти</option>
+        <option value="grey">🔲 Сиви</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Количество</label>
+      <input type="number" class="fi" id="dep-count" min="1" placeholder="Колко броя?" oninput="updateDeployHint()">
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;" id="dep-hint"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Локация / Обект</label>
+      <input class="fi" id="dep-loc" placeholder="напр. Северна порта, Главна улица...">
+    </div>
+    <div class="fg">
+      <label class="fl">Отговорен работник</label>
+      <select class="fs" id="dep-worker">
+        <option value="">Изберете работник...</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Бележки (по избор)</label>
+      <input class="fi" id="dep-notes" placeholder="Допълнителни бележки...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-deploy')">Отказ</button>
+      <button class="btn btn-primary" onclick="deployBarriers()">Разгърни</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit User -->
+<div id="modal-user" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-title" id="modal-user-title">Нов акаунт</div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Име</label><input class="fi" id="u-fname" placeholder="Първо име"></div>
+      <div class="fg"><label class="fl">Фамилия</label><input class="fi" id="u-lname" placeholder="Фамилно име"></div>
+    </div>
+    <div class="fg"><label class="fl">Потребителско име</label><input class="fi" id="u-uname" placeholder="потребителско_име (без интервали)"></div>
+    <div class="fg">
+      <label class="fl">Парола</label>
+      <input class="fi" type="password" id="u-pass" placeholder="Парола">
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;" id="u-pass-hint">Оставете празно, за да запазите текущата парола (при редактиране)</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Роля</label>
+      <select class="fs" id="u-role">
+        <option value="worker">Работник</option>
+        <option value="dispatcher">Диспечер</option>
+        <option value="admin">Администратор</option>
+      </select>
+    </div>
+    <input type="hidden" id="u-edit-id">
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveUser()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Detail -->
+<div id="modal-task" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-title" id="modal-task-title">Задача</div>
+    <div id="modal-task-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-task')">Затвори</button>
+      <button class="btn btn-amber" id="modal-archive-btn" onclick="archiveTaskFromModal()" style="display:none;">Архивирай</button>
+      <button class="btn btn-green" id="modal-complete-btn" onclick="completeTaskFromModal()">✓ Завърши</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete -->
+<div id="modal-confirm" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">Потвърждение</div>
+    <p id="confirm-msg" style="font-size:14px;color:var(--text2);line-height:1.6;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Отказ</button>
+      <button class="btn btn-red" id="confirm-ok">🗑 Изтрий</button>
+    </div>
+  </div>
+</div>
+
+<!-- Team Form Modal -->
+<div id="modal-team-form" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title" id="modal-team-title">Нов екип</div>
+    <div class="fg">
+      <label class="fl">Членове на екипа</label>
+      <div id="team-form-workers" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;padding:2px;"></div>
+    </div>
+    <div class="fg" style="margin-top:6px;">
+      <label class="fl">Автомобил</label>
+      <select class="fs" id="team-form-vehicle">
+        <option value="">— Без автомобил —</option>
+      </select>
+    </div>
+    <input type="hidden" id="team-edit-id">
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-team-form')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveTeam()">Запази екипа</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vehicle Modal -->
+<div id="modal-vehicle" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="modal-vehicle-title">Нов автомобил</div>
+    <div class="fg">
+      <label class="fl">Наименование</label>
+      <input class="fi" id="v-name" placeholder="напр. Тойота 03">
+    </div>
+    <div class="fg">
+      <label class="fl">Рег. номер (по избор)</label>
+      <input class="fi" id="v-plate" placeholder="напр. СА 1234 АВ">
+    </div>
+    <input type="hidden" id="v-edit-id">
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-vehicle')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<!-- Equipment Modal -->
+<div id="modal-equipment" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title" id="modal-equip-title">Оборудване</div>
+    <div id="equip-add-row" style="margin-bottom:14px;display:flex;gap:8px;">
+      <input class="fi" id="equip-new-item" placeholder="Добави нов запис..." style="flex:1;" onkeydown="if(event.key==='Enter')addEquipItem()">
+      <button class="btn btn-primary" onclick="addEquipItem()">+ Добави</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Зачислено оборудване</div>
+    <div id="equip-list" style="max-height:300px;overflow-y:auto;"></div>
+    <input type="hidden" id="equip-vehicle-id">
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-equipment')">Затвори</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Single Member Team -->
+<div id="modal-single-confirm" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">⚠️ Екип от един човек</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Избрали сте само <strong id="single-confirm-name"></strong> за екип. Екипите обичайно са от поне 2 души. Потвърдете с паролата на диспечера.</p>
+    <div class="fg">
+      <label class="fl">Парола на диспечера</label>
+      <input class="fi" type="password" id="single-confirm-pass" placeholder="Въведете паролата си">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-single-confirm')">Отказ</button>
+      <button class="btn btn-amber" onclick="confirmSingleTeam()">Потвърди екип от 1 човек</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shift Picker Popup -->
+<div id="shift-picker" style="display:none;position:absolute;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-md);padding:6px;min-width:210px;"></div>
+
+<div id="notif-tray"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ══════════════════════════════════════════════════════════════
+const SK = 'opsdesk_v3';
+const BARRIER_TYPES = ['white','yellow','grey'];
+const BARRIER_TOTALS = {white:40, yellow:40, grey:40};
+const BARRIER_LABELS = {white:'⬜ Бели', yellow:'🟨 Жълти', grey:'🔲 Сиви'};
+const BARRIER_CSS = {white:'btype-white', yellow:'btype-yellow', grey:'btype-grey'};
+
+let currentUser = null;
+let selectedTaskId = null;
+let dMap = null, dMarker = null;
+let wMap = null;
+let wMapTaskId = null;
+let lastTaskHash = '';
+let pollTimer = null;
+
+const AVATAR_PALETTES = [
+  ['#dbeafe','#1d4ed8'],['#dcfce7','#15803d'],['#fef9c3','#a16207'],
+  ['#fce7f3','#9d174d'],['#ede9fe','#6d28d9'],['#ffedd5','#c2410c'],
+  ['#cffafe','#0e7490'],['#f1f5f9','#475569'],['#fef2f2','#991b1b'],
+];
+function avCol(id){const i=Math.abs(hashStr(id))%AVATAR_PALETTES.length;return AVATAR_PALETTES[i];}
+function hashStr(s){let h=0;for(let c of s){h=(h<<5)-h+c.charCodeAt(0);h|=0;}return h;}
+
+// ── Data ──
+function getDB(){
+  try{const r=localStorage.getItem(SK);if(r)return JSON.parse(r);}catch(e){}
+  return initDB();
+}
+function saveDB(db){localStorage.setItem(SK,JSON.stringify(db));}
+function initDB(){
+  const db={
+    users: [
+      {id:'admin',fname:'Администратор',lname:'',username:'admin',password:'admin123',role:'admin'},
+      {id:'d1',fname:'Сергей', lname:'Ставриев', username:'sergey.s', password:'pass123',role:'dispatcher'},
+      {id:'d2',fname:'Владимир',lname:'Коцев',   username:'vladimir.k',password:'pass123',role:'dispatcher'},
+      {id:'d3',fname:'Ивайло', lname:'Видинов',  username:'ivaylo.v', password:'pass123',role:'dispatcher'},
+      {id:'d4',fname:'Георги', lname:'Стоилов',  username:'georgi.st',password:'pass123',role:'dispatcher'},
+      {id:'d5',fname:'Красимир',lname:'Пиронков',username:'krasimir.p',password:'pass123',role:'dispatcher'},
+    ],
+    attendance:{},
+    tasks:[],
+    barriers:[]
+  };
+  const wnames=[
+    ['Кирил',    'Крумов',       'kiril.k'],
+    ['Пламен',   'Цеков',        'plamen.c'],
+    ['Витан',    'Витанов',      'vitan.v'],
+    ['Илиян',    'Владимиров',   'iliyan.vl'],
+    ['Цветозар', 'Енчев',        'cvetozar.e'],
+    ['Деян',     'Христов',      'deyan.h'],
+    ['Антон',    'Таранджийски', 'anton.t'],
+    ['Петър',    'Викторов',     'petar.vi'],
+    ['Венцислав','Гергов',       'vencislav.g'],
+    ['Петър',    'Христев',      'petar.hr'],
+    ['Станимир', 'Цачев',        'stanimir.c'],
+    ['Николай',  'Беличев',      'nikolay.b'],
+    ['Огнян',    'Велинов',      'ognyan.vel'],
+    ['Георги',   'Таков',        'georgi.t'],
+    ['Венцислав','Любенов',      'vencislav.l'],
+    ['Ангел',    'Манавски',     'angel.m'],
+    ['Ивайло',   'Найденов',     'ivaylo.n'],
+    ['Траян',    'Митрев',       'trayan.m'],
+    ['Виктор',   'Георгиев',     'viktor.g'],
+    ['Янко',     'Янков',        'yanko.y'],
+    ['Любомир',  'Здравков',     'lyubomir.z'],
+    ['Юлиан',    'Веселинов',    'yulian.v'],
+    ['Ивайло',   'Йорданов',     'ivaylo.yo'],
+    ['Росен',    'Пашов',        'rosen.p'],
+    ['Петър',    'Захариев',     'petar.za'],
+    ['Денислав', 'Светославов',  'denislav.sv'],
+    ['Георги',   'Илков',        'georgi.il'],
+    ['Марти',    'Димитров',     'marti.d'],
+    ['Васко',    'Григоров',     'vasko.gr'],
+    ['Денислав', 'Енчев',        'denislav.e'],
+    ['Йордан',   'Михайлов',     'yordan.m'],
+    ['Петър',    'Михайлов',     'petar.mi'],
+    ['Петър',    'Стоянов',      'petar.st'],
+  ];
+  wnames.forEach((n,i)=>db.users.push({id:'w'+(i+1),fname:n[0],lname:n[1],username:n[2],password:'worker123',role:'worker'}));
+  saveDB(db);
+  return db;
+}
+
+// ── Session ──
+function getSession(){try{const s=localStorage.getItem('opsdesk_session');return s?JSON.parse(s):null;}catch(e){return null;}}
+function saveSession(u){localStorage.setItem('opsdesk_session',JSON.stringify(u));}
+function clearSession(){localStorage.removeItem('opsdesk_session');}
+
+// ── Helpers ──
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function fmtDate(s){if(!s)return'';return new Date(s).toLocaleDateString('bg-BG',{day:'numeric',month:'long',year:'numeric'});}
+function fmtTime(ts){if(!ts)return'';return new Date(ts).toLocaleTimeString('bg-BG',{hour:'2-digit',minute:'2-digit'});}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+// ══════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════
+window.onload=function(){
+  const session=getSession();
+  if(session){
+    const db=getDB();
+    const u=db.users.find(x=>x.id===session.id);
+    if(u){enterApp(u);return;}
+  }
+  document.getElementById('login-screen').style.display='flex';
+};
+
+function doLogin(){
+  const uname=document.getElementById('li-user').value.trim();
+  const pass=document.getElementById('li-pass').value;
+  const errEl=document.getElementById('login-error');
+  const db=getDB();
+  const user=db.users.find(u=>u.username===uname&&u.password===pass);
+  if(!user){
+    errEl.textContent='Грешно потребителско име или парола.';
+    errEl.style.display='block';
+    return;
+  }
+  errEl.style.display='none';
+  saveSession({id:user.id});
+  enterApp(user);
+}
+
+function doLogout(){
+  clearSession();
+  currentUser=null;
+  if(pollTimer)clearInterval(pollTimer);
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
+  if(dMap){dMap.remove();dMap=null;}
+  if(wMap){wMap.remove();wMap=null;}
+}
+
+function enterApp(user){
+  currentUser=user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='flex';
+  document.getElementById('tb-username').textContent=user.fname+' '+user.lname;
+  const rt=document.getElementById('tb-role');
+  const roleLabels={admin:'Администратор',dispatcher:'Диспечер',worker:'Работник'};
+  rt.textContent=roleLabels[user.role]||user.role;
+  rt.className='role-tag '+user.role;
+  renderNav();
+  const firstSec=user.role==='worker'?'tasks':(user.role==='admin'?'admin':'dashboard');
+  showSection(firstSec);
+  renderAll();
+  startPolling();
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════════════════
+function renderNav(){
+  if(!currentUser)return;
+  const role=currentUser.role;
+  const items=[
+    {id:'dashboard',label:'Табло',roles:['admin','dispatcher']},
+    {id:'attendance',label:'Присъствие',roles:['admin','dispatcher'],badge:'att'},
+    {id:'schedule',label:'График',roles:['admin','dispatcher']},
+    {id:'teams',label:'Екипи',roles:['admin','dispatcher']},
+    {id:'dispatch',label:'Изпращане',roles:['admin','dispatcher']},
+    {id:'tasks',label:'Задачи',roles:['admin','dispatcher','worker'],badge:'tasks'},
+    {id:'barriers',label:'Прегради',roles:['admin','dispatcher','worker']},
+    {id:'vehicles',label:'Автомобили',roles:['admin','dispatcher']},
+    {id:'admin',label:'Администрация',roles:['admin']},
+  ];
+  const nav=document.getElementById('main-nav');
+  nav.innerHTML=items.filter(i=>i.roles.includes(role)).map(i=>
+    `<button class="nav-btn" onclick="showSection('${i.id}')" data-sec="${i.id}">${i.label}${i.badge?`<span class="nav-badge" id="nb-${i.badge}">0</span>`:''}</button>`
+  ).join('');
+  updateBadges();
+}
+
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const sec=document.getElementById('sec-'+id);
+  if(sec)sec.classList.add('active');
+  const btn=document.querySelector(`[data-sec="${id}"]`);
+  if(btn)btn.classList.add('active');
+  if(id==='dispatch'){
+    const tryMap = () => {
+      if(typeof L === 'undefined') { setTimeout(tryMap, 150); return; }
+      if(!dMap) initDispatchMap(); else dMap.invalidateSize();
+    };
+    setTimeout(tryMap, 120);
+    renderDispatchTeamSel();
+  }
+  if(id==='tasks'){renderTasks();}
+  if(id==='dashboard'){renderDashboard();}
+  if(id==='schedule'){renderSchedTable();}
+  if(id==='teams'){renderTeams(); renderTeamsVehicles();}
+  if(id==='vehicles'){renderVehicles();}
+}
+
+function updateBadges(){
+  const db=getDB();
+  const today=todayStr();
+  const pCount=db.users.filter(u=>u.role!=='admin'&&isPresent(u.id)).length;
+  const tCount=db.tasks.filter(t=>t.status==='active').length;
+  const nb1=document.getElementById('nb-att');
+  const nb2=document.getElementById('nb-tasks');
+  if(nb1)nb1.textContent=pCount;
+  if(nb2)nb2.textContent=tCount;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════════════════
+function renderAll(){
+  const db=getDB();
+  renderDashboard();
+  renderAttendance();
+  renderTeamSelector();
+  renderTasks();
+  renderTodayDispatches();
+  renderBarriers();
+  renderAdminUsers();
+  renderTeams();
+  renderTeamsVehicles();
+  renderVehicles();
+  updateBadges();
+  // Barriers deploy button visibility
+  const btn=document.getElementById('deploy-barriers-btn');
+  if(btn)btn.style.display=(currentUser&&currentUser.role!=='worker')?'inline-flex':'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const db=getDB();
+  const today=todayStr();
+  const now=new Date();
+  document.getElementById('dash-date').textContent=now.toLocaleDateString('bg-BG',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  const workers=db.users.filter(u=>u.role!=='admin');
+  const pCount=workers.filter(u=>isPresent(u.id)).length;
+  const activeTasks=db.tasks.filter(t=>t.status==='active').length;
+  const totalDep=BARRIER_TYPES.reduce((s,t)=>s+getDeployed(t),0);
+  const totalAll=BARRIER_TYPES.reduce((s,t)=>s+BARRIER_TOTALS[t],0);
+  const avail=totalAll-totalDep;
+
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat"><div class="stat-val">${pCount}</div><div class="stat-lbl">Присъстващи днес</div><div class="stat-hint">от ${workers.length} служители</div></div>
+    <div class="stat"><div class="stat-val">${activeTasks}</div><div class="stat-lbl">Активни задачи</div><div class="stat-hint">изпратени екипи</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--amber)">${totalDep}</div><div class="stat-lbl">Разгърнати прегради</div><div class="stat-hint">от ${totalAll} общо</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--green)">${avail}</div><div class="stat-lbl">Налични прегради</div><div class="stat-hint">${Math.round(avail/totalAll*100)}% на склад</div></div>
+  `;
+
+  const recentTasks=db.tasks.filter(t=>t.status==='active').slice(0,4);
+  const recentHTML=recentTasks.length
+    ? recentTasks.map(t=>miniTaskCard(t,db)).join('')
+    : '<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Няма активни задачи</div></div>';
+
+  const barrierRows=BARRIER_TYPES.map(type=>{
+    const dep=getDeployed(type);
+    const tot=BARRIER_TOTALS[type];
+    const pct=Math.round((tot-dep)/tot*100);
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+        <span class="btype-badge ${BARRIER_CSS[type]}">${BARRIER_LABELS[type]}</span>
+        <span class="mono" style="font-size:12px;color:var(--text2);">${tot-dep} / ${tot}</span>
+      </div>
+      <div class="pb"><div class="pb-fill pb-green" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dash-bottom').innerHTML=`
+    <div class="card"><div class="card-hd"><div class="card-title">Активни задачи</div><button class="btn btn-ghost btn-sm" onclick="showSection('tasks')">Виж всички</button></div>${recentHTML}</div>
+    <div class="card"><div class="card-hd"><div class="card-title">Наличност на прегради</div></div>${barrierRows}</div>
+  `;
+}
+
+function miniTaskCard(t,db){
+  const team=t.team.map(id=>{const u=db.users.find(x=>x.id===id);return u?u.fname:'?';}).join(', ');
+  return `<div style="padding:10px 0;border-bottom:1px solid var(--border);">
+    <div style="font-size:13px;font-weight:600;">${esc(t.name)}</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:2px;">${fmtTime(t.createdAt)} · ${esc(team)}</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ATTENDANCE
+// ══════════════════════════════════════════════════════════════
+function getAttToday(){const db=getDB();return db.attendance[todayStr()]||{};}
+function isPresent(uid){return getAttToday()[uid]===true;}
+function toggleAtt(uid){
+  const db=getDB();const today=todayStr();
+  if(!db.attendance[today])db.attendance[today]={};
+  db.attendance[today][uid]=!isPresent(uid);
+  saveDB(db);renderAttendance();renderTeamSelector();updateBadges();renderDashboard();
+}
+function markAll(val){
+  const db=getDB();const today=todayStr();
+  if(!db.attendance[today])db.attendance[today]={};
+  db.users.forEach(u=>{db.attendance[today][u.id]=val;});
+  saveDB(db);renderAttendance();renderTeamSelector();updateBadges();renderDashboard();
+}
+function renderAttendance(){
+  const db=getDB();
+  const dispatchers=db.users.filter(u=>u.role==='dispatcher');
+  const workers=db.users.filter(u=>u.role==='worker');
+  document.getElementById('att-dispatchers').innerHTML=dispatchers.map(u=>pCardHTML(u,true)).join('');
+  document.getElementById('att-workers').innerHTML=workers.map(u=>pCardHTML(u,true)).join('');
+  const all=db.users.filter(u=>u.role!=='admin');
+  const pCount=all.filter(u=>isPresent(u.id)).length;
+  const total=all.length;
+  document.getElementById('att-summary').innerHTML=`
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+      <div><span style="font-size:24px;font-weight:700;font-family:'Syne',sans-serif;">${pCount}</span> <span style="font-size:12px;color:var(--text2);">присъстват</span></div>
+      <div><span style="font-size:24px;font-weight:700;font-family:'Syne',sans-serif;">${total-pCount}</span> <span style="font-size:12px;color:var(--text2);">отсъстват</span></div>
+      <div style="flex:1;min-width:100px;"><div class="pb" style="margin-top:0;"><div class="pb-fill pb-blue" style="width:${total?Math.round(pCount/total*100):0}%"></div></div></div>
+    </div>`;
+}
+function pCardHTML(u,clickable){
+  const present=isPresent(u.id);
+  const [bg,tc]=avCol(u.id);
+  const initials=u.fname[0]+(u.lname[0]||'');
+  const oc=clickable?`onclick="toggleAtt('${u.id}')"` :'';
+  return `<div class="pcard ${present?'present':'absent'}" ${oc}>
+    <div class="avatar" style="background:${bg};color:${tc}">${initials}</div>
+    <div style="flex:1;min-width:0;">
+      <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u.fname)} ${esc(u.lname)}</div>
+      <div class="prole">${present?'✓ Присъства':'Отсъства'}</div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// DISPATCH
+// ══════════════════════════════════════════════════════════════
+function renderTeamSelector(){ renderDispatchTeamSel(); }
+
+let taskCoords=null;
+function dispatchTeam(){
+  if(!currentUser||currentUser.role==='worker'){showNotif('⚠️','Няма права','Само диспечери могат да изпращат задачи.','nt-warn');return;}
+  const db=getDB();
+  const teamsData=getTeamsToday();
+  if(_selectedDispatchTeamId===null||_selectedDispatchTeamId===undefined){
+    showNotif('⚠️','Изберете екип','Изберете екип от списъка.','nt-warn');return;
+  }
+  const team=teamsData.list.find(t=>t.id===_selectedDispatchTeamId);
+  if(!team){showNotif('⚠️','Грешка','Екипът не е намерен.','nt-warn');return;}
+  const name=document.getElementById('tn').value.trim();
+  const notes=document.getElementById('tnotes').value.trim();
+  const addr=document.getElementById('taddr').value.trim();
+  if(!name){showNotif('⚠️','Липсва наименование','Въведете наименование на задачата.','nt-warn');return;}
+
+  const vehicles=getVehicles();
+  const vehicle=team.vehicleId?vehicles.find(v=>v.id===team.vehicleId):null;
+  const task={
+    id:uid(),name,notes,address:addr,coords:taskCoords,
+    team:team.members,
+    teamId:team.id,
+    vehicleId:team.vehicleId||null,
+    vehicleName:vehicle?vehicle.name:null,
+    status:'active',createdAt:Date.now(),date:todayStr(),createdBy:currentUser.id
+  };
+  db.tasks.unshift(task);saveDB(db);
+  document.getElementById('tn').value='';document.getElementById('tnotes').value='';
+  document.getElementById('taddr').value='';document.getElementById('tcoords').value='';
+  document.getElementById('geo-status').textContent='';
+  taskCoords=null;if(dMarker){dMarker.remove();dMarker=null;}
+  _selectedDispatchTeamId=null;
+  renderDispatchTeamSel();renderTasks();renderTodayDispatches();renderDashboard();updateBadges();
+  const teamNames=team.members.map(id=>{const u=db.users.find(x=>x.id===id);return u?u.fname:id;}).join(', ');
+  const vehStr=vehicle?` · 🚗 ${vehicle.name}`:'';
+  showNotif('🚀','Екипът е изпратен',`${teamNames}${vehStr} → ${esc(name)}`,'nt-ok');
+}
+
+function renderTodayDispatches(){
+  const db=getDB();
+  const today=todayStr();
+  const tasks=db.tasks.filter(t=>t.date===today);
+  const el=document.getElementById('today-dispatches');
+  const countEl=document.getElementById('today-dispatch-count');
+  if(countEl){
+    const active=tasks.filter(t=>t.status==='active').length;
+    const done=tasks.filter(t=>t.status==='done'||t.status==='archived').length;
+    countEl.textContent=tasks.length
+      ?`${tasks.length} общо · ${active} активни · ${done} завършени`
+      :'Няма изпращания днес';
+  }
+  if(!tasks.length){el.innerHTML='<div class="empty" style="padding:20px"><div class="empty-ico">📭</div><div class="empty-t">Няма изпращания днес</div></div>';return;}
+  el.innerHTML=tasks.slice(0,4).map(t=>taskCardHTML(t,db)).join('')
+    +(tasks.length>4?`<div style="text-align:center;padding:10px 0;font-size:12px;color:var(--text2);">+${tasks.length-4} още — <a href="#" onclick="showSection('tasks');switchTaskTab('today');return false;" style="color:var(--accent);">виж всички</a></div>`:'');
+}
+
+// ══════════════════════════════════════════════════════════════
+// TASKS
+// ══════════════════════════════════════════════════════════════
+let taskTab='active';
+function switchTaskTab(tab){
+  taskTab=tab;
+  ['active','done','archive','today'].forEach(t=>{
+    document.getElementById('tab-'+t)?.classList.toggle('active',t===tab);
+    const el=document.getElementById('tasks-'+t+'-list');
+    if(el)el.style.display=t===tab?'block':'none';
+  });
+}
+
+function renderTasks(){
+  if(!currentUser)return;
+  const db=getDB();
+  const isWorker=currentUser.role==='worker';
+  document.getElementById('tasks-dispatcher-view').style.display=isWorker?'none':'block';
+  document.getElementById('tasks-worker-view').style.display=isWorker?'block':'none';
+
+  if(isWorker){
+    document.getElementById('tasks-sub').textContent='Вашата текуща задача';
+    renderWorkerTask(db);
+    return;
+  }
+  document.getElementById('tasks-sub').textContent='Всички изпратени операции';
+
+  // Active
+  const active=db.tasks.filter(t=>t.status==='active');
+  document.getElementById('tasks-active-list').innerHTML=active.length
+    ?active.map(t=>taskCardHTML(t,db)).join('')
+    :'<div class="empty"><div class="empty-ico">📋</div><div class="empty-t">Няма активни задачи</div><div class="empty-d">Изпратете екип, за да създадете задача</div></div>';
+
+  // Completed (done but not yet archived)
+  const done=db.tasks.filter(t=>t.status==='done');
+  document.getElementById('tasks-done-list').innerHTML=done.length
+    ?done.map(t=>taskCardHTML(t,db)).join('')
+    :'<div class="empty"><div class="empty-ico">✅</div><div class="empty-t">Няма завършени задачи</div><div class="empty-d">Завършените задачи се появяват тук преди архивиране</div></div>';
+
+  // Archive
+  const archived=db.tasks.filter(t=>t.status==='archived');
+  document.getElementById('tasks-archive-list').innerHTML=archived.length
+    ?archived.map(t=>taskCardHTML(t,db)).join('')
+    :'<div class="empty"><div class="empty-ico">🗂️</div><div class="empty-t">Архивът е празен</div><div class="empty-d">Преместете завършени задачи тук за по-чист изглед</div></div>';
+
+  // Today — all tasks for current date regardless of status
+  const today=todayStr();
+  const todayTasks=db.tasks.filter(t=>t.date===today);
+  document.getElementById('tasks-today-list').innerHTML=todayTasks.length
+    ?todayTasks.map(t=>taskCardHTML(t,db)).join('')
+    :'<div class="empty"><div class="empty-ico">📅</div><div class="empty-t">Няма задачи днес</div><div class="empty-d">Задачи, изпратени днес, ще се появят тук</div></div>';
+
+  // Update tab badges
+  const tcActive=document.getElementById('tcount-active');
+  const tcDone=document.getElementById('tcount-done');
+  if(tcActive)tcActive.textContent=active.length;
+  if(tcDone)tcDone.textContent=done.length;
+}
+
+function taskCardHTML(t,db){
+  const team=t.team.map(id=>{const u=db.users.find(x=>x.id===id);return u?`<span class="chip">${esc(u.fname)} ${esc(u.lname)}</span>`:'';}).join('');
+  const vehicleChip=t.vehicleName&&t.vehicleId
+    ?`<span class="chip" onclick="showVehicleEquip('${t.vehicleId}')" style="background:#e0f2fe;color:#0369a1;cursor:pointer;" title="Виж оборудването">🚗 ${esc(t.vehicleName)}</span>`
+    :t.vehicleName?`<span class="chip" style="background:#e0f2fe;color:#0369a1;">🚗 ${esc(t.vehicleName)}</span>`
+    :'';
+  const statusLabels={active:'Активна',done:'Завършена',archived:'Архивирана'};
+  const statusEl=`<span class="tstatus ${t.status}">${statusLabels[t.status]||t.status}</span>`;
+  const actions=t.status==='active'
+    ?`<div style="display:flex;gap:6px;"><button class="btn btn-sm btn-green" onclick="completeTask('${t.id}')">✓ Завърши</button><button class="btn btn-sm btn-ghost" onclick="openTaskDetail('${t.id}')">Преглед</button></div>`
+    :t.status==='done'
+    ?`<button class="btn btn-sm btn-amber" onclick="archiveTask('${t.id}')">Архивирай</button>`
+    :t.status==='archived'
+    ?`<button class="btn btn-sm btn-red" onclick="deleteTask('${t.id}')">🗑 Изтрий</button>`
+    :'';
+  return `<div class="tcard">
+    <div class="tcard-hd">
+      <div><div class="tcard-title">${esc(t.name)}</div><div class="tcard-meta">${fmtDate(t.date)} · ${fmtTime(t.createdAt)}${t.address?' · 📍 '+esc(t.address):''}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">${statusEl}${actions}</div>
+    </div>
+    <div class="team-chips">${vehicleChip}${team}</div>
+  </div>`;
+}
+
+function completeTask(id){
+  const db=getDB();
+  const t=db.tasks.find(x=>x.id===id);
+  if(t){t.status='done';t.completedAt=Date.now();saveDB(db);}
+  renderTasks();renderTodayDispatches();renderDashboard();updateBadges();
+  showNotif('✅','Задачата е завършена',esc(t?.name||''),'nt-ok');
+}
+
+function archiveTask(id){
+  const db=getDB();
+  const t=db.tasks.find(x=>x.id===id);
+  if(t){t.status='archived';t.archivedAt=Date.now();saveDB(db);}
+  closeModal('modal-task');renderTasks();renderTodayDispatches();renderDashboard();updateBadges();
+  showNotif('🗂️','Задачата е архивирана',esc(t?.name||''),'nt-ok');
+}
+
+function deleteTask(id){
+  const db=getDB();
+  const t=db.tasks.find(x=>x.id===id);
+  if(!t)return;
+  // populate confirm modal
+  document.getElementById('confirm-msg').textContent=`Сигурни ли сте, че искате да изтриете „${t.name}"? Това действие е необратимо.`;
+  document.getElementById('confirm-ok').onclick=function(){
+    const db2=getDB();
+    db2.tasks=db2.tasks.filter(x=>x.id!==id);
+    saveDB(db2);
+    closeModal('modal-confirm');
+    renderTasks();renderTodayDispatches();renderDashboard();updateBadges();
+    showNotif('🗑️','Задачата е изтрита',esc(t.name),'nt-ok');
+  };
+  document.getElementById('modal-confirm').style.display='flex';
+}
+
+function openTaskDetail(id){
+  const db=getDB();
+  const t=db.tasks.find(x=>x.id===id);
+  if(!t)return;
+  selectedTaskId=id;
+  document.getElementById('modal-task-title').textContent=t.name;
+  const team=t.team.map(id=>{const u=db.users.find(x=>x.id===id);return u?`${u.fname} ${u.lname}`:id;}).join(', ');
+  const statusLabels={active:'Активна',done:'Завършена',archived:'Архивирана'};
+  const complBtn=document.getElementById('modal-complete-btn');
+  const archBtn=document.getElementById('modal-archive-btn');
+  complBtn.style.display=t.status==='active'?'inline-flex':'none';
+  archBtn.style.display=t.status==='done'?'inline-flex':'none';
+  document.getElementById('modal-task-body').innerHTML=`
+    <div class="info-row"><span class="info-lbl">Статус</span><span class="tstatus ${t.status}">${statusLabels[t.status]||t.status}</span></div>
+    <div class="info-row"><span class="info-lbl">Дата</span>${fmtDate(t.date)} в ${fmtTime(t.createdAt)}</div>
+    <div class="info-row"><span class="info-lbl">Екип</span>${esc(team)}</div>
+    ${t.vehicleName?`<div class="info-row"><span class="info-lbl">Автомобил</span><span onclick="showVehicleEquip('${t.vehicleId}')" style="cursor:pointer;color:var(--accent);font-weight:600;" title="Виж оборудването">🚗 ${esc(t.vehicleName)}</span></div>`:''}
+    ${t.address?`<div class="info-row"><span class="info-lbl">Адрес</span>${esc(t.address)}</div>`:''}
+    ${t.coords?`<div class="info-row"><span class="info-lbl">Координати</span><span class="mono" style="font-size:12px;">${t.coords[0].toFixed(5)}, ${t.coords[1].toFixed(5)}</span></div>`:''}
+    ${t.notes?`<div class="info-row"><span class="info-lbl">Бележки</span>${esc(t.notes)}</div>`:''}
+    ${t.completedAt?`<div class="info-row"><span class="info-lbl">Завършена</span>${fmtTime(t.completedAt)}</div>`:''}
+    ${t.coords?`<div id="modal-map" style="height:200px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border);margin-top:12px;"></div>`:''}
+  `;
+  document.getElementById('modal-task').style.display='flex';
+  if(t.coords){setTimeout(()=>{
+    if(typeof L === 'undefined') return;
+    const m=L.map('modal-map').setView(t.coords,15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(m);
+    L.marker(t.coords).addTo(m).bindPopup(t.name).openPopup();
+  },100);}
+}
+
+function completeTaskFromModal(){completeTask(selectedTaskId);closeModal('modal-task');}
+function archiveTaskFromModal(){archiveTask(selectedTaskId);}
+
+// ══════════════════════════════════════════════════════════════
+// WORKER TASK VIEW
+// ══════════════════════════════════════════════════════════════
+function renderWorkerTask(db){
+  const uid=currentUser.id;
+  const today=todayStr();
+  const task=db.tasks.find(t=>t.team.includes(uid)&&t.date===today&&t.status==='active');
+  const el=document.getElementById('worker-task-display');
+  if(task&&task.id===wMapTaskId)return;
+  wMapTaskId=task?task.id:null;
+  if(!task){
+    el.innerHTML=`<div class="worker-task-card"><div class="worker-task-body">
+      <div class="empty"><div class="empty-ico">☀️</div><div class="empty-t">Няма активна задача</div><div class="empty-d">Все още не сте изпратени за днес. Проверете по-късно.</div></div>
+    </div></div>`;
+    return;
+  }
+  const team=task.team.map(id=>{const u=db.users.find(x=>x.id===id);return u?`${u.fname} ${u.lname}`:id;}).join(', ');
+  const navBtn=task.coords
+    ?`<a href="https://www.google.com/maps/dir/?api=1&destination=${task.coords[0]},${task.coords[1]}" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:14px;">🧭 Навигация</a>`
+    :task.address?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}" target="_blank" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:14px;">🧭 Навигация</a>`:'';
+  el.innerHTML=`<div class="worker-task-card">
+    <div class="worker-task-header">
+      <div style="font-size:10px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Активна задача</div>
+      <div style="font-size:21px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:-.02em;">${esc(task.name)}</div>
+      <div style="font-size:12px;opacity:.75;margin-top:3px;">${fmtDate(task.date)} · ${fmtTime(task.createdAt)}</div>
+    </div>
+    <div class="worker-task-body">
+      ${task.coords?`<div id="worker-map-div" class="worker-map-wrap"></div>`:''}
+      ${navBtn}
+      <div class="info-row"><span class="info-lbl">Локация</span>${esc(task.address||(task.coords?task.coords[0].toFixed(4)+', '+task.coords[1].toFixed(4):'Не е посочена'))}</div>
+      <div class="info-row"><span class="info-lbl">Екип</span>${esc(team)}</div>
+      ${task.vehicleName?`<div class="info-row"><span class="info-lbl">Автомобил</span><span onclick="showVehicleEquip('${task.vehicleId}')" style="cursor:pointer;color:var(--accent);font-weight:600;" title="Виж оборудването">🚗 ${esc(task.vehicleName)}</span></div>`:''}
+      ${task.notes?`<div class="info-row"><span class="info-lbl">Бележки</span>${esc(task.notes)}</div>`:''}
+      <button class="btn btn-green" style="width:100%;justify-content:center;margin-top:16px;" onclick="workerComplete('${task.id}')">✓ Маркирай като завършена</button>
+    </div>
+  </div>`;
+  if(task.coords){setTimeout(()=>{
+    if(typeof L === 'undefined') return;
+    if(wMap){wMap.remove();wMap=null;}
+    wMap=L.map('worker-map-div').setView(task.coords,15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(wMap);
+    L.marker(task.coords).addTo(wMap).bindPopup(`<b>${task.name}</b>`).openPopup();
+  },100);}
+}
+function workerComplete(id){
+  const db=getDB();
+  const t=db.tasks.find(x=>x.id===id);
+  if(t){t.status='done';t.completedAt=Date.now();saveDB(db);}
+  wMapTaskId=null;
+  renderTasks();renderDashboard();updateBadges();
+  showNotif('✅','Задачата е завършена','Добра работа!','nt-ok');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAP (Dispatch)
+// ══════════════════════════════════════════════════════════════
+function initDispatchMap(){
+  if(dMap)return;
+  dMap=L.map('dispatch-map').setView([42.698,23.322],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(dMap);
+  dMap.on('click',function(e){
+    const {lat,lng}=e.latlng;
+    setDCoords([lat,lng]);
+    document.getElementById('tcoords').value=lat.toFixed(6)+', '+lng.toFixed(6);
+    document.getElementById('geo-status').textContent=`📍 Маркерът е поставен на ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  });
+}
+function setDCoords(c){taskCoords=c;if(dMarker)dMarker.remove();dMarker=L.marker(c).addTo(dMap);dMap.setView(c,15);}
+function parseCoordsInput(){
+  const v=document.getElementById('tcoords').value;
+  const p=v.split(',').map(s=>parseFloat(s.trim()));
+  if(p.length===2&&!isNaN(p[0])&&!isNaN(p[1])){setDCoords(p);document.getElementById('geo-status').textContent='📍 Координатите са зададени';}
+}
+let geoTimer=null;
+function geocodeAddr(){
+  clearTimeout(geoTimer);
+  const addr=document.getElementById('taddr').value.trim();
+  if(addr.length<5)return;
+  geoTimer=setTimeout(async()=>{
+    document.getElementById('geo-status').textContent='🔍 Търсене на адреса...';
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`);
+      const data=await res.json();
+      if(data.length){const c=[parseFloat(data[0].lat),parseFloat(data[0].lon)];setDCoords(c);document.getElementById('geo-status').textContent='✅ Адресът е намерен';}
+      else document.getElementById('geo-status').textContent='❌ Адресът не е намерен — натиснете картата';
+    }catch(e){document.getElementById('geo-status').textContent='⚠️ Геокодирането не е налично — натиснете картата';}
+  },700);
+}
+
+// ══════════════════════════════════════════════════════════════
+// BARRIERS
+// ══════════════════════════════════════════════════════════════
+function getDeployed(type){
+  const db=getDB();
+  return db.barriers.filter(b=>b.type===type&&!b.collected).reduce((s,b)=>s+b.count,0);
+}
+function getAvail(type){return BARRIER_TOTALS[type]-getDeployed(type);}
+
+function renderBarriers(){
+  const db=getDB();
+  // Type stat cards
+  const statsEl=document.getElementById('barrier-type-stats');
+  statsEl.innerHTML=`<div class="g3">${BARRIER_TYPES.map(type=>{
+    const dep=getDeployed(type);const tot=BARRIER_TOTALS[type];const av=tot-dep;
+    return `<div class="stat">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span class="btype-badge ${BARRIER_CSS[type]}">${BARRIER_LABELS[type]}</span>
+      </div>
+      <div class="stat-val" style="font-size:22px;">${av} <span style="font-size:14px;color:var(--text2);">/ ${tot}</span></div>
+      <div class="stat-lbl">Налични</div>
+      <div class="pb" style="margin-top:8px;"><div class="pb-fill pb-green" style="width:${Math.round(av/tot*100)}%"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">${dep} разгърнати</div>
+    </div>`;
+  }).join('')}</div>`;
+
+  // Log table
+  const card=document.getElementById('barrier-log-card');
+  if(!db.barriers.length){
+    card.innerHTML='<div class="empty"><div class="empty-ico">🚧</div><div class="empty-t">Няма разгръщания</div><div class="empty-d">Разгърнете прегради, за да започнете проследяване</div></div>';
+    return;
+  }
+  const rows=db.barriers.map(b=>{
+    const worker=db.users.find(u=>u.id===b.workerId);
+    const wname=worker?`${worker.fname} ${worker.lname}`:'—';
+    const badge=b.collected
+      ?`<span class="dep-badge in">✓ Прибрани</span>`
+      :`<span class="dep-badge out">⚡ Разгърнати</span>`;
+    const canCollect=!b.collected&&currentUser&&currentUser.role!=='worker';
+    const collectBtn=canCollect?`<button class="btn btn-xs btn-ghost" onclick="collectBarrier('${b.id}')">Прибери</button>`:'';
+    return `<tr>
+      <td><span class="btype-badge ${BARRIER_CSS[b.type]}">${BARRIER_LABELS[b.type]}</span></td>
+      <td><span class="mono" style="font-weight:600;">${b.count}</span></td>
+      <td>${esc(b.location)}</td>
+      <td>${esc(wname)}</td>
+      <td>${fmtDate(b.date)}</td>
+      <td>${badge}</td>
+      <td style="display:flex;gap:6px;align-items:center;">${collectBtn}${b.notes?`<span style="font-size:11px;color:var(--text3);">${esc(b.notes)}</span>`:''}</td>
+    </tr>`;
+  }).join('');
+  card.innerHTML=`<div style="overflow-x:auto;"><table class="btable">
+    <thead><tr><th>Вид</th><th>Брой</th><th>Локация</th><th>Работник</th><th>Дата</th><th>Статус</th><th>Действия</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function openDeployModal(){
+  document.getElementById('dep-count').value='';
+  document.getElementById('dep-loc').value='';
+  document.getElementById('dep-notes').value='';
+  document.getElementById('dep-type').value='white';
+  updateDeployHint();
+  // Populate workers
+  const db=getDB();
+  const sel=document.getElementById('dep-worker');
+  sel.innerHTML='<option value="">Изберете работник...</option>'+
+    db.users.filter(u=>u.role==='worker').map(u=>`<option value="${u.id}">${esc(u.fname)} ${esc(u.lname)}</option>`).join('');
+  document.getElementById('modal-deploy').style.display='flex';
+}
+function updateDeployHint(){
+  const type=document.getElementById('dep-type').value;
+  document.getElementById('dep-hint').textContent=`${getAvail(type)} ${BARRIER_LABELS[type]} налични`;
+}
+function deployBarriers(){
+  const db=getDB();
+  const type=document.getElementById('dep-type').value;
+  const count=parseInt(document.getElementById('dep-count').value)||0;
+  const loc=document.getElementById('dep-loc').value.trim();
+  const wid=document.getElementById('dep-worker').value;
+  const notes=document.getElementById('dep-notes').value.trim();
+  if(count<1){showNotif('⚠️','Невалидно','Въведете валидно количество.','nt-warn');return;}
+  if(count>getAvail(type)){showNotif('⚠️','Недостатъчно',`Налични само ${getAvail(type)} ${BARRIER_LABELS[type]}.`,'nt-warn');return;}
+  if(!loc){showNotif('⚠️','Нужна локация','Въведете наименование на обекта.','nt-warn');return;}
+  if(!wid){showNotif('⚠️','Нужен работник','Изберете отговорен работник.','nt-warn');return;}
+  db.barriers.unshift({id:uid(),type,count,location:loc,workerId:wid,notes,date:todayStr(),collected:false,deployedAt:Date.now()});
+  saveDB(db);closeModal('modal-deploy');renderBarriers();renderDashboard();
+  showNotif('🚧','Прегради разгърнати',`${count}× ${BARRIER_LABELS[type]} на ${esc(loc)}`,'nt-ok');
+}
+function collectBarrier(bid){
+  const db=getDB();
+  const b=db.barriers.find(x=>x.id===bid);
+  if(b){b.collected=true;b.collectedAt=Date.now();saveDB(db);}
+  renderBarriers();renderDashboard();
+  showNotif('✅','Прибрани',`${b.count}× ${BARRIER_LABELS[b.type]} върнати от ${esc(b.location)}`,'nt-ok');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN — USER MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+function renderAdminUsers(){
+  const db=getDB();
+  const el=document.getElementById('admin-users-table');
+  if(!el)return;
+  const roleDisplayBG={admin:'Администратор',dispatcher:'Диспечер',worker:'Работник'};
+  const rows=db.users.map(u=>{
+    const [bg,tc]=avCol(u.id);
+    const initials=u.fname[0]+(u.lname[0]||'');
+    const isMe=currentUser&&u.id===currentUser.id;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${bg};color:${tc}">${initials}</div>
+        <div><div style="font-weight:600;">${esc(u.fname)} ${esc(u.lname)}</div><div style="font-size:11px;color:var(--text2);" class="mono">${esc(u.username)}</div></div>
+      </div></td>
+      <td><span class="role-tag ${u.role}">${roleDisplayBG[u.role]||u.role}</span></td>
+      <td style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-xs btn-ghost" onclick="openEditUser('${u.id}')">Редактирай</button>
+        ${!isMe?`<button class="btn btn-xs btn-red" onclick="deleteUser('${u.id}')">Изтрий</button>`:'<span style="font-size:11px;color:var(--text3);">(вие)</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`<div style="overflow-x:auto;"><table class="admin-table">
+    <thead><tr><th>Имe</th><th>Роля</th><th>Действия</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function openAddUserModal(){
+  document.getElementById('modal-user-title').textContent='Нов акаунт';
+  document.getElementById('u-fname').value='';
+  document.getElementById('u-lname').value='';
+  document.getElementById('u-uname').value='';
+  document.getElementById('u-pass').value='';
+  document.getElementById('u-role').value='worker';
+  document.getElementById('u-edit-id').value='';
+  document.getElementById('u-pass-hint').textContent='';
+  document.getElementById('modal-user').style.display='flex';
+}
+function openEditUser(id){
+  const db=getDB();
+  const u=db.users.find(x=>x.id===id);if(!u)return;
+  document.getElementById('modal-user-title').textContent='Редактиране на акаунт';
+  document.getElementById('u-fname').value=u.fname;
+  document.getElementById('u-lname').value=u.lname;
+  document.getElementById('u-uname').value=u.username;
+  document.getElementById('u-pass').value='';
+  document.getElementById('u-role').value=u.role;
+  document.getElementById('u-edit-id').value=u.id;
+  document.getElementById('u-pass-hint').textContent='Оставете празно, за да запазите текущата парола';
+  document.getElementById('modal-user').style.display='flex';
+}
+function saveUser(){
+  const db=getDB();
+  const fname=document.getElementById('u-fname').value.trim();
+  const lname=document.getElementById('u-lname').value.trim();
+  const uname=document.getElementById('u-uname').value.trim().toLowerCase();
+  const pass=document.getElementById('u-pass').value;
+  const role=document.getElementById('u-role').value;
+  const editId=document.getElementById('u-edit-id').value;
+  if(!fname||!lname){showNotif('⚠️','Липсват данни','Въведете име и фамилия.','nt-warn');return;}
+  if(!uname){showNotif('⚠️','Липсват данни','Въведете потребителско име.','nt-warn');return;}
+  const dupUser=db.users.find(u=>u.username===uname&&u.id!==editId);
+  if(dupUser){showNotif('⚠️','Дублиране','Потребителското име вече съществува.','nt-warn');return;}
+  if(editId){
+    const u=db.users.find(x=>x.id===editId);
+    if(u){u.fname=fname;u.lname=lname;u.username=uname;u.role=role;if(pass)u.password=pass;}
+    showNotif('👤','Акаунтът е обновен',`${fname} ${lname}`,'nt-ok');
+  } else {
+    if(!pass){showNotif('⚠️','Липсва парола','Въведете парола за новия акаунт.','nt-warn');return;}
+    db.users.push({id:'u'+uid(),fname,lname,username:uname,password:pass,role});
+    showNotif('👤','Акаунтът е създаден',`${fname} ${lname} (${role})`,'nt-ok');
+  }
+  saveDB(db);closeModal('modal-user');renderAdminUsers();renderAttendance();renderTeamSelector();updateBadges();
+}
+function deleteUser(id){
+  if(currentUser&&id===currentUser.id){showNotif('⚠️','Не може','Не можете да изтриете собствения си акаунт.','nt-warn');return;}
+  const db=getDB();
+  const u=db.users.find(x=>x.id===id);
+  db.users=db.users.filter(x=>x.id!==id);
+  saveDB(db);renderAdminUsers();renderAttendance();renderTeamSelector();updateBadges();
+  showNotif('🗑️','Изтрит',`${u?.fname||''} ${u?.lname||''} е премахнат.`,'nt-ok');
+}
+
+// ══════════════════════════════════════════════════════════════
+// POLLING (live task updates for workers)
+// ══════════════════════════════════════════════════════════════
+function startPolling(){
+  if(pollTimer)clearInterval(pollTimer);
+  lastTaskHash=buildTaskHash();
+  pollTimer=setInterval(()=>{
+    const newHash=buildTaskHash();
+    if(newHash!==lastTaskHash){
+      lastTaskHash=newHash;
+      updateBadges();
+      if(currentUser?.role==='worker'){
+        const db=getDB();
+        const uid=currentUser.id;
+        const today=todayStr();
+        const myTask=db.tasks.find(t=>t.team.includes(uid)&&t.date===today&&t.status==='active');
+        if(myTask&&myTask.id!==wMapTaskId){
+          showNotif('📋','Нова задача!',esc(myTask.name),'nt-task');
+          wMapTaskId=null;
+          if(document.getElementById('sec-tasks').classList.contains('active'))renderTasks();
+        }
+      }
+    }
+  },3000);
+}
+function buildTaskHash(){
+  const db=getDB();
+  return db.tasks.map(t=>t.id+t.status).join('|');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ГРАФИК — ИНТЕРАКТИВНА ТАБЛИЦА
+// ══════════════════════════════════════════════════════════════
+const SHIFT_STYLE = {
+  'Д': {bg:'#dbeafe', color:'#1d4ed8', label:'Дневна 08–20'},
+  'Н': {bg:'#ede9fe', color:'#6d28d9', label:'Нощна 20–08'},
+  'Р': {bg:'#dcfce7', color:'#15803d', label:'Редовна 08–17'},
+  'О': {bg:'#fef9c3', color:'#a16207', label:'Отпуска'},
+  'К': {bg:'#ffedd5', color:'#c2410c', label:'Командировка'},
+  'Б': {bg:'#fee2e2', color:'#991b1b', label:'Болничен'},
+};
+const BG_DAYS = ['нд','пн','вт','ср','чт','пт','сб'];
+
+let schedYear  = new Date().getFullYear();
+let schedMonth = new Date().getMonth();
+
+function getSchedKey(year, month) {
+  return `sched_${year}_${String(month+1).padStart(2,'0')}`;
+}
+function getSchedData(year, month) {
+  const db = getDB();
+  if (!db.schedules) db.schedules = {};
+  return db.schedules[getSchedKey(year, month)] || {};
+}
+function saveSchedData(year, month, data) {
+  const db = getDB();
+  if (!db.schedules) db.schedules = {};
+  db.schedules[getSchedKey(year, month)] = data;
+  saveDB(db);
+}
+
+function schedPrevMonth() {
+  schedMonth--;
+  if (schedMonth < 0) { schedMonth = 11; schedYear--; }
+  renderSchedTable();
+}
+function schedNextMonth() {
+  schedMonth++;
+  if (schedMonth > 11) { schedMonth = 0; schedYear++; }
+  renderSchedTable();
+}
+
+function renderSchedTable() {
+  const daysInMonth = new Date(schedYear, schedMonth + 1, 0).getDate();
+  const data = getSchedData(schedYear, schedMonth);
+  const db = getDB();
+  const staff = db.users.filter(u => u.role !== 'admin');
+  const dispatchers = staff.filter(u => u.role === 'dispatcher');
+  const workers     = staff.filter(u => u.role === 'worker');
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === schedYear && today.getMonth() === schedMonth;
+  const todayDate = today.getDate();
+
+  const monthNames = ['Януари','Февруари','Март','Април','Май','Юни','Юли','Август','Септември','Октомври','Ноември','Декември'];
+  document.getElementById('sched-month-label').textContent = `${monthNames[schedMonth]} ${schedYear}`;
+
+  // Header
+  let head = `<thead><tr>
+    <th style="position:sticky;left:0;z-index:10;background:var(--surface);border-bottom:2px solid var(--border);border-right:2px solid var(--border2);padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:170px;">Служител</th>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(schedYear, schedMonth, d).getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const isToday   = isCurrentMonth && d === todayDate;
+    head += `<th style="border-bottom:2px solid var(--border);border-right:1px solid var(--border);padding:4px 0;text-align:center;min-width:34px;width:34px;
+      ${isToday ? 'background:var(--accent);color:#fff;' : isWeekend ? 'background:#f5f4f0;color:var(--text3);' : 'color:var(--text2);'}">
+      <div style="font-size:11px;font-weight:700;">${d}</div>
+      <div style="font-size:9px;opacity:.7;">${BG_DAYS[dow]}</div>
+    </th>`;
+  }
+  head += `</tr></thead>`;
+
+  const renderGroup = (people, groupLabel) => {
+    let rows = `<tr><td colspan="${daysInMonth+1}" style="background:var(--surface2);padding:5px 12px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);border-right:1px solid var(--border);">${groupLabel}</td></tr>`;
+    for (const u of people) {
+      const [bg, tc] = avCol(u.id);
+      rows += `<tr>
+        <td style="position:sticky;left:0;z-index:5;background:var(--surface);border-right:2px solid var(--border2);border-bottom:1px solid var(--border);padding:5px 10px;white-space:nowrap;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+            <span style="font-size:12px;font-weight:600;">${esc(u.fname)} ${esc(u.lname)}</span>
+          </div>
+        </td>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dow = new Date(schedYear, schedMonth, d).getDay();
+        const isWeekend = dow === 0 || dow === 6;
+        const isToday   = isCurrentMonth && d === todayDate;
+        const shift = (data[u.id] || {})[d] || null;
+        const ss = shift ? SHIFT_STYLE[shift] : null;
+        rows += `<td onclick="openShiftPicker('${u.id}',${d},this)" style="border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:center;cursor:pointer;padding:2px;user-select:none;
+          ${isToday ? 'box-shadow:inset 0 0 0 2px var(--accent);' : ''}
+          ${ss ? `background:${ss.bg};` : isWeekend ? 'background:#f5f4f0;' : ''}">
+          <span style="font-size:12px;font-weight:700;${ss ? `color:${ss.color};` : 'color:transparent;'}" data-uid="${u.id}" data-day="${d}">${shift || '·'}</span>
+        </td>`;
+      }
+      rows += `</tr>`;
+    }
+    return rows;
+  };
+
+  document.getElementById('sched-table').innerHTML = `<thead>${head}</thead><tbody>
+    ${renderGroup(dispatchers, 'Диспечери')}
+    ${renderGroup(workers, 'Работници')}
+  </tbody>`;
+}
+
+// ── Shift Picker Popup ──
+let _pickerUid = null, _pickerDay = null, _pickerTd = null;
+
+function openShiftPicker(userId, day, td) {
+  _pickerUid = userId; _pickerDay = day; _pickerTd = td;
+  const data = getSchedData(schedYear, schedMonth);
+  const cur = (data[userId] || {})[day] || null;
+
+  const options = [
+    {code: null, label: 'Почивен',      bg:'var(--surface2)', color:'var(--text2)'},
+    {code: 'Д',  label: 'Д — Дневна 08–20',  bg:'#dbeafe', color:'#1d4ed8'},
+    {code: 'Н',  label: 'Н — Нощна 20–08',   bg:'#ede9fe', color:'#6d28d9'},
+    {code: 'Р',  label: 'Р — Редовна 08–17', bg:'#dcfce7', color:'#15803d'},
+    {code: 'О',  label: 'О — Отпуска',       bg:'#fef9c3', color:'#a16207'},
+    {code: 'К',  label: 'К — Командировка',  bg:'#ffedd5', color:'#c2410c'},
+    {code: 'Б',  label: 'Б — Болничен',      bg:'#fee2e2', color:'#991b1b'},
+  ];
+
+  const rect = td.getBoundingClientRect();
+  const picker = document.getElementById('shift-picker');
+  picker.innerHTML = '';
+  options.forEach(o => {
+    const div = document.createElement('div');
+    div.style.cssText = `padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;border-radius:6px;margin:2px 0;background:${o.bg};color:${o.color};${cur===o.code?'outline:2px solid currentColor;outline-offset:-2px;':''}`;
+    div.textContent = o.label + (cur===o.code ? ' ✓' : '');
+    div.addEventListener('click', e => { e.stopPropagation(); selectShift(o.code); });
+    picker.appendChild(div);
+  });
+
+  picker.style.display = 'block';
+  // Position near the cell
+  const scrollY = window.scrollY;
+  const scrollX = window.scrollX;
+  let top = rect.bottom + scrollY + 4;
+  let left = rect.left + scrollX;
+  // Keep within viewport
+  if (left + 220 > window.innerWidth) left = window.innerWidth - 224;
+  if (top + 280 > window.innerHeight + scrollY) top = rect.top + scrollY - 284;
+  picker.style.top = top + 'px';
+  picker.style.left = left + 'px';
+}
+
+function selectShift(code) {
+  if (!_pickerUid) return;
+  const data = getSchedData(schedYear, schedMonth);
+  if (!data[_pickerUid]) data[_pickerUid] = {};
+  if (code === null) {
+    delete data[_pickerUid][_pickerDay];
+  } else {
+    data[_pickerUid][_pickerDay] = code;
+  }
+  saveSchedData(schedYear, schedMonth, data);
+
+  // Update cell in-place
+  const span = _pickerTd.querySelector('span');
+  const ss = code ? SHIFT_STYLE[code] : null;
+  if (span) {
+    span.textContent = code || '·';
+    span.style.color = ss ? ss.color : 'transparent';
+  }
+  const dow = new Date(schedYear, schedMonth, _pickerDay).getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  _pickerTd.style.background = ss ? ss.bg : isWeekend ? '#f5f4f0' : '';
+
+  closeShiftPicker();
+}
+
+function closeShiftPicker() {
+  document.getElementById('shift-picker').style.display = 'none';
+  _pickerUid = null; _pickerDay = null; _pickerTd = null;
+}
+
+document.addEventListener('click', e => {
+  const picker = document.getElementById('shift-picker');
+  if (picker && !picker.contains(e.target) && !e.target.closest('#sched-table td')) {
+    closeShiftPicker();
+  }
+});
+
+function applyTodayFromSchedule() {
+  const today = new Date();
+  if (today.getFullYear() !== schedYear || today.getMonth() !== schedMonth) {
+    showNotif('⚠️','Грешен месец','Навигирайте до текущия месец за да приложите присъствието.','nt-warn');
+    return;
+  }
+  const d = today.getDate();
+  const data = getSchedData(schedYear, schedMonth);
+  const db = getDB();
+  const staff = db.users.filter(u => u.role !== 'admin');
+
+  const hasAnyData = staff.some(u => data[u.id] && data[u.id][d] !== undefined);
+  if (!hasAnyData) {
+    const monthNames = ['януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+    showNotif('⚠️','Няма данни',`Няма въведени смени за ${d} ${monthNames[schedMonth]}.`,'nt-warn');
+    return;
+  }
+
+  const todayKey = todayStr();
+  if (!db.attendance[todayKey]) db.attendance[todayKey] = {};
+  let presentCount = 0;
+  staff.forEach(u => {
+    const shift = (data[u.id] || {})[d] || null;
+    const present = shift === 'Д' || shift === 'Н' || shift === 'Р';
+    db.attendance[todayKey][u.id] = present;
+    if (present) presentCount++;
+  });
+  saveDB(db);
+  renderAttendance();
+  renderTeamSelector();
+  updateBadges();
+  renderDashboard();
+  showNotif('✅','Присъствието е приложено',`${presentCount} присъстващи за днес от графика.`,'nt-ok');
+  showSection('attendance');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ЕКИПИ ЗА ДЕНЯ
+// ══════════════════════════════════════════════════════════════
+function getTeamsToday() {
+  const db = getDB();
+  if (!db.teams) db.teams = {};
+  return db.teams[todayStr()] || { list: [] };
+}
+function saveTeamsToday(data) {
+  const db = getDB();
+  if (!db.teams) db.teams = {};
+  db.teams[todayStr()] = data;
+  saveDB(db);
+}
+
+// Returns Set of team IDs (team.id strings) that have an active task today
+function getActiveBusyTeamIds() {
+  const db = getDB();
+  const today = todayStr();
+  return new Set(
+    db.tasks
+      .filter(t => t.date === today && t.status === 'active' && t.teamId)
+      .map(t => t.teamId)
+  );
+}
+
+function renderTeams() {
+  const db = getDB();
+  const teamsData = getTeamsToday();
+  const today = new Date();
+
+  // Guard — elements don't exist for worker role
+  const dateSub = document.getElementById('teams-date-sub');
+  if (!dateSub) return;
+  dateSub.textContent = today.toLocaleDateString('bg-BG', {weekday:'long', day:'numeric', month:'long'});
+
+  const presentWorkers = db.users.filter(u => u.role === 'worker' && isPresent(u.id));
+  const assignedIds = new Set(teamsData.list.flatMap(t => t.members));
+  const availableWorkers = presentWorkers.filter(u => !assignedIds.has(u.id));
+
+  const availEl = document.getElementById('teams-avail-list');
+  const availCount = document.getElementById('teams-avail-count');
+  if (availCount) availCount.textContent = `${availableWorkers.length} неразпределени · ${assignedIds.size} в екипи`;
+
+  const mobile = isMobile();
+
+  if (!presentWorkers.length) {
+    availEl.innerHTML = '<div class="empty" style="padding:16px;"><div class="empty-ico">👥</div><div class="empty-t">Няма присъстващи работници</div><div class="empty-d">Приложете присъствието от График</div></div>';
+  } else if (!availableWorkers.length) {
+    availEl.innerHTML = '<div style="padding:12px 0;text-align:center;font-size:13px;color:var(--green);font-weight:600;">✓ Всички работници са разпределени</div>';
+  } else {
+    const showAddBtn = mobile && _selectedTeamIdx !== null;
+    availEl.innerHTML = availableWorkers.map(u => {
+      const [bg, tc] = avCol(u.id);
+      if (mobile) {
+        return `<div style="display:flex;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--border);">
+          <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+          <span style="font-size:13px;font-weight:500;flex:1;">${esc(u.fname)} ${esc(u.lname)}</span>
+          ${showAddBtn ? `<button class="btn btn-xs btn-primary" onclick="mobileAddToTeam('${u.id}')" style="flex-shrink:0;">+ Добави</button>` : ''}
+        </div>`;
+      }
+      return `<div class="drag-member"
+          draggable="true"
+          data-uid="${u.id}"
+          data-from="avail"
+          ondragstart="teamDragStart(event)"
+          ondragend="teamDragEnd(event)"
+          style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;cursor:grab;">
+        <span style="font-size:16px;color:var(--text3);line-height:1;">⠿</span>
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+        <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  if (mobile && _selectedTeamIdx !== null) {
+    availEl.insertAdjacentHTML('afterbegin', `<div style="padding:8px 10px;background:var(--accent-bg);border-radius:var(--r-sm);margin-bottom:8px;font-size:12px;color:var(--accent);font-weight:700;">
+      👇 Изберете служители за Екип ${_selectedTeamIdx + 1}
+    </div>`);
+  }
+
+  const resetBtn = document.getElementById('teams-reset-btn');
+  const lockedNotice = document.getElementById('teams-locked-notice');
+  if (resetBtn) resetBtn.style.display = teamsData.list.length ? 'inline-flex' : 'none';
+  if (lockedNotice) lockedNotice.style.display = teamsData.list.length ? 'block' : 'none';
+
+  const teamsEl = document.getElementById('teams-list');
+  if (!teamsEl) return;
+
+  if (!teamsData.list.length) {
+    teamsEl.innerHTML = `<div id="veh-drop-zone" style="border:2px dashed var(--border);border-radius:var(--r);padding:32px 16px;text-align:center;transition:border-color .2s,background .2s;">
+      <div style="font-size:28px;margin-bottom:8px;">👥</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px;">Няма сформирани екипи</div>
+      <div style="font-size:12px;color:var(--text3);">Натиснете „+ Нов екип" или влачете автомобил тук</div>
+    </div>`;
+    setupVehicleDropZone();
+    renderTeamsVehicles();
+    return;
+  }
+
+  const vehicles = getVehicles();
+  const busyIds = getActiveBusyTeamIds();
+  teamsEl.innerHTML = `<div id="veh-drop-zone" style="border:2px dashed var(--border);border-radius:var(--r);padding:16px;text-align:center;margin-bottom:8px;transition:border-color .2s,background .2s;">
+    <div style="font-size:12px;color:var(--text3);">${mobile ? '🚗 Добавете автомобил с бутона „+"' : '🚗 Влачете автомобил тук за нов екип'}</div>
+  </div>` + teamsData.list.map((team, idx) => {
+    const vehicle = team.vehicleId ? vehicles.find(v => v.id === team.vehicleId) : null;
+    const busy  = busyIds.has(team.id);
+    const isSelected = mobile && _selectedTeamIdx === idx;
+    const alone = !busy && team.members.length === 1 && !team.confirmedAlone;
+    const cardBorder = isSelected ? 'var(--accent)' : alone ? '#fca5a5' : busy ? '#fde68a' : 'var(--border)';
+    const cardBg     = isSelected ? 'var(--accent-bg)' : alone ? '#fff5f5' : busy ? '#fffbeb' : 'var(--surface)';
+
+    const membersHtml = team.members.map(id => {
+      const u = db.users.find(x => x.id === id);
+      if (!u) return '';
+      const [bg, tc] = avCol(u.id);
+      if (busy) {
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;opacity:.75;">
+          <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+          <span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>
+        </div>`;
+      }
+      if (mobile) {
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 8px;border-bottom:1px solid var(--border);">
+          <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+          <span style="font-size:13px;flex:1;">${esc(u.fname)} ${esc(u.lname)}</span>
+          <button class="btn btn-xs btn-red" onclick="mobileRemoveFromTeam('${u.id}',${idx})" style="flex-shrink:0;padding:2px 7px;">×</button>
+        </div>`;
+      }
+      return `<div class="drag-member"
+          draggable="true"
+          data-uid="${u.id}"
+          data-from="${idx}"
+          ondragstart="teamDragStart(event)"
+          ondragend="teamDragEnd(event)"
+          style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;cursor:grab;">
+        <span style="font-size:16px;color:var(--text3);line-height:1;">⠿</span>
+        <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+        <span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>
+      </div>`;
+    }).join('');
+
+    const busyBadge = busy ? `
+      <div style="margin-top:8px;padding:7px 10px;background:#fef3c7;border-radius:var(--r-sm);font-size:12px;font-weight:600;color:#92400e;">
+        ⚡ На активна задача — редакцията е заключена
+      </div>` : '';
+
+    const aloneWarning = alone ? `
+      <div style="margin-top:8px;padding:8px 10px;background:#fee2e2;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:12px;font-weight:600;color:#991b1b;">⚠️ Само 1 човек в екипа</span>
+        <button class="btn btn-xs" onclick="confirmTeamAlone(${idx})" style="background:#991b1b;color:#fff;border:none;">Остави сам</button>
+      </div>` : '';
+
+    // Mobile: tap card to select, show Done button when selected
+    const mobileSelectAttr = (mobile && !busy)
+      ? `onclick="selectTeamForAdd(${idx})"` : '';
+    const mobileDoneBtn = (mobile && isSelected && !busy)
+      ? `<button class="btn btn-xs btn-primary" onclick="event.stopPropagation();_selectedTeamIdx=null;renderTeams();" style="margin-left:auto;">✓ Готово</button>` : '';
+    const mobileHint = (mobile && !busy && !isSelected && team.members.length === 0)
+      ? `<div style="font-size:11px;color:var(--text3);padding:6px 0;text-align:center;">Натиснете за да добавите хора</div>` : '';
+
+    const disbandBtn = (!busy && !mobile) ? `<button class="btn btn-xs btn-red" onclick="disbandTeam(${idx})" title="Разформировай екипа">✕ Разформировай</button>` : '';
+    const mobileDisbandBtn = (mobile && !busy && isSelected) ? `<button class="btn btn-xs btn-red" onclick="event.stopPropagation();disbandTeam(${idx})" style="flex-shrink:0;">✕</button>` : '';
+
+    return `<div class="${busy || mobile ? 'card' : 'team-drop-zone card'}"
+        data-team="${idx}"
+        ${mobileSelectAttr}
+        ${(!mobile && !busy) ? `ondragover="event.preventDefault()" ondragenter="teamDragEnter(event)" ondragleave="teamDragLeave(event)" ondrop="_dragVehicleId ? vehicleDropOnTeam(event,${idx}) : teamDrop(event)"` : ''}
+        style="margin-bottom:12px;border:2px solid ${cardBorder};background:${cardBg};transition:border-color .2s,background .2s;${mobile && !busy ? 'cursor:pointer;' : ''}">
+      <div class="card-hd" style="margin-bottom:4px;">
+        <div style="flex:1;min-width:0;">
+          <div class="card-title">Екип ${idx + 1} <span style="font-size:12px;font-weight:400;color:var(--text3);">(${team.members.length} чл.)</span></div>
+          ${vehicle
+            ? `<div class="card-sub" onclick="event.stopPropagation();showVehicleEquip('${vehicle.id}')" style="cursor:pointer;color:var(--accent);" title="Виж оборудването">🚗 ${esc(vehicle.name)}${vehicle.plate?' · '+esc(vehicle.plate):''}</div>`
+            : '<div class="card-sub" style="color:var(--text3);">Без автомобил</div>'}
+        </div>
+        ${mobileDoneBtn}
+        ${mobileDisbandBtn}
+        ${disbandBtn}
+      </div>
+      ${mobileHint}
+      <div class="team-members-list">${membersHtml}</div>
+      ${busyBadge}${aloneWarning}
+    </div>`;
+  }).join('');
+
+  setupVehicleDropZone();
+  renderTeamsVehicles();
+}
+
+function renderTeamsVehicles() {
+  const el = document.getElementById('teams-vehicles-list');
+  if (!el) return;
+  const vehicles = getVehicles();
+  const teamsData = getTeamsToday();
+  const usedVehIds = new Set(teamsData.list.map(t => t.vehicleId).filter(Boolean));
+
+  if (!vehicles.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">Няма автомобили</div>';
+    return;
+  }
+  // Newest first — unshift ensures new vehicles are at index 0
+  const mob = isMobile();
+  el.innerHTML = vehicles.map(v => {
+    const used = usedVehIds.has(v.id);
+    const draggable = !used && !mob;
+    return `<div class="${draggable ? 'drag-vehicle' : ''}"
+        ${draggable ? `draggable="true" data-vid="${v.id}" ondragstart="vehicleDragStart(event)" ondragend="vehicleDragEnd(event)"` : ''}
+        style="display:flex;align-items:center;gap:8px;padding:${mob?'10px':'8px'} 6px;border-bottom:1px solid var(--border);border-radius:4px;
+               cursor:${used ? 'default' : draggable ? 'grab' : 'default'};opacity:${used ? '0.45' : '1'};">
+      <span style="font-size:14px;color:var(--text3);">${used ? '🔒' : '🚗'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;">${esc(v.name)}</div>
+        ${v.plate ? `<div style="font-size:11px;color:var(--text3);">${esc(v.plate)}</div>` : ''}
+      </div>
+      ${used ? '' : `<button class="btn btn-xs btn-ghost" onclick="vehicleQuickAdd('${v.id}')" title="Добави като нов екип" style="flex-shrink:0;font-size:16px;line-height:1;padding:2px 7px;">+</button>`}
+    </div>`;
+  }).join('');
+}
+
+function setupVehicleDropZone() {
+  const zone = document.getElementById('veh-drop-zone');
+  if (!zone) return;
+  zone.ondragover  = e => e.preventDefault();
+  zone.ondragenter = e => {
+    e.preventDefault();
+    if (_dragVehicleId) { zone.style.borderColor = 'var(--accent)'; zone.style.background = 'var(--accent-bg)'; }
+  };
+  zone.ondragleave = e => {
+    if (!zone.contains(e.relatedTarget)) { zone.style.borderColor = ''; zone.style.background = ''; }
+  };
+  zone.ondrop = e => {
+    zone.style.borderColor = ''; zone.style.background = '';
+    if (_dragVehicleId) vehicleDropCreateTeam(e);
+  };
+}
+
+// ── Vehicle drag to create/assign team ──
+let _dragVehicleId = null;
+let _selectedTeamIdx = null; // мобилен режим: маркиран екип за добавяне на членове
+
+function isMobile() { return window.innerWidth <= 640; }
+
+function selectTeamForAdd(idx) {
+  if (!isMobile()) return;
+  _selectedTeamIdx = (_selectedTeamIdx === idx) ? null : idx;
+  renderTeams();
+}
+
+function mobileAddToTeam(uid) {
+  if (_selectedTeamIdx === null) return;
+  const teamsData = getTeamsToday();
+  const team = teamsData.list[_selectedTeamIdx];
+  if (!team) return;
+  if (!team.members.includes(uid)) team.members.push(uid);
+  if (team.members.length > 1) team.confirmedAlone = false;
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+function mobileRemoveFromTeam(uid, teamIdx) {
+  const teamsData = getTeamsToday();
+  const team = teamsData.list[teamIdx];
+  if (!team) return;
+  team.members = team.members.filter(id => id !== uid);
+  if (team.members.length === 0) {
+    teamsData.list.splice(teamIdx, 1);
+    _selectedTeamIdx = null;
+  }
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+function vehicleDragStart(e) {
+  _dragVehicleId = e.currentTarget.dataset.vid;
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', 'vehicle:' + _dragVehicleId);
+  setTimeout(() => { if (e.currentTarget) e.currentTarget.style.opacity = '0.35'; }, 0);
+}
+
+function vehicleDragEnd(e) {
+  if (e.currentTarget) e.currentTarget.style.opacity = '';
+  _dragVehicleId = null;
+  // Reset drop-zone highlight on teams-list
+  const tl = document.getElementById('teams-list');
+  if (tl) { tl.style.borderColor = ''; tl.style.background = ''; }
+}
+
+// Called when a vehicle is dropped onto an existing team card
+function vehicleDropOnTeam(e, teamIdx) {
+  e.preventDefault(); e.stopPropagation();
+  if (!_dragVehicleId) return;
+  const teamsData = getTeamsToday();
+  const team = teamsData.list[teamIdx];
+  if (!team) return;
+  if (getActiveBusyTeamIds().has(team.id)) {
+    showNotif('🔒', 'Заключено', 'Екипът е на активна задача.', 'nt-warn');
+    return;
+  }
+  teamsData.list.forEach(t => { if (t.vehicleId === _dragVehicleId) t.vehicleId = null; });
+  team.vehicleId = _dragVehicleId;
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderTeamsVehicles();
+  renderDispatchTeamSel();
+  showNotif('🚗', 'Автомобилът е зачислен', '', 'nt-ok');
+}
+
+// Called when a vehicle is dropped onto the empty teams zone → create new empty team
+function vehicleDropCreateTeam(e) {
+  e.preventDefault();
+  if (!_dragVehicleId) return;
+  createTeamWithVehicle(_dragVehicleId);
+}
+
+// Called by the + button on each vehicle row
+function vehicleQuickAdd(vehicleId) {
+  createTeamWithVehicle(vehicleId);
+}
+
+function createTeamWithVehicle(vehicleId) {
+  const teamsData = getTeamsToday();
+  // Unassign from any existing team
+  teamsData.list.forEach(t => { if (t.vehicleId === vehicleId) t.vehicleId = null; });
+  teamsData.list.unshift({ id: uid(), members: [], vehicleId, confirmedAlone: false });
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderTeamsVehicles();
+  renderDispatchTeamSel();
+  showNotif('🚗', 'Нов екип създаден', 'Влачете служители в него.', 'nt-ok');
+}
+
+function disbandTeam(teamIdx) {
+  const teamsData = getTeamsToday();
+  const team = teamsData.list[teamIdx];
+  if (!team) return;
+  if (getActiveBusyTeamIds().has(team.id)) {
+    showNotif('🔒', 'Заключено', 'Екипът е на активна задача — не може да се разформирова.', 'nt-warn');
+    return;
+  }
+  // Remove team — members return to available pool automatically (not in any team)
+  teamsData.list.splice(teamIdx, 1);
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderDispatchTeamSel();
+  showNotif('↺', 'Екипът е разформирован', 'Членовете са върнати в наличните работници.', 'nt-ok');
+}
+
+// ── Drag & Drop за екипи ──
+let _dragUid = null, _dragFromIdx = null;
+
+function teamDragStart(e) {
+  _dragUid     = e.currentTarget.dataset.uid;
+  const raw    = e.currentTarget.dataset.from;
+  _dragFromIdx = raw === 'avail' ? 'avail' : parseInt(raw);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _dragUid);
+  setTimeout(() => { if (e.currentTarget) e.currentTarget.style.opacity = '0.35'; }, 0);
+}
+
+function teamDragEnd(e) {
+  if (e.currentTarget) e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.team-drop-zone').forEach(z => {
+    z.style.borderColor = '';
+    z.style.background  = '';
+  });
+  _dragUid = null; _dragFromIdx = null;
+}
+
+function teamDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function teamDragEnter(e) {
+  e.preventDefault();
+  const zone  = e.currentTarget;
+  const toIdx = parseInt(zone.dataset.team);
+  const teamsData = getTeamsToday();
+  const toTeam = teamsData.list[toIdx];
+  const busy = toTeam && getActiveBusyTeamIds().has(toTeam.id);
+  if (busy) return;
+  if (_dragFromIdx === 'avail' || toIdx !== _dragFromIdx) {
+    zone.style.borderColor = 'var(--accent)';
+    zone.style.background  = 'var(--accent-bg)';
+  }
+}
+
+function teamDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    const teamsData = getTeamsToday();
+    const idx  = parseInt(e.currentTarget.dataset.team);
+    const team = teamsData.list[idx];
+    const alone = team && team.members.length === 1 && !team.confirmedAlone;
+    e.currentTarget.style.borderColor = alone ? '#fca5a5' : '';
+    e.currentTarget.style.background  = alone ? '#fff5f5' : '';
+  }
+}
+
+function teamDrop(e) {
+  e.preventDefault();
+  const toIdx = parseInt(e.currentTarget.dataset.team);
+  if (_dragUid === null) return;
+
+  const teamsData = getTeamsToday();
+  const busyIds = getActiveBusyTeamIds();
+
+  // Block drop into a busy team
+  const toTeam = teamsData.list[toIdx];
+  if (toTeam && busyIds.has(toTeam.id)) {
+    showNotif('🔒', 'Заключено', 'Екипът е на активна задача — съставът не може да се променя.', 'nt-warn');
+    return;
+  }
+  // Block drag from a busy team
+  if (_dragFromIdx !== 'avail') {
+    const fromTeam = teamsData.list[_dragFromIdx];
+    if (fromTeam && busyIds.has(fromTeam.id)) {
+      showNotif('🔒', 'Заключено', 'Екипът е на активна задача — съставът не може да се променя.', 'nt-warn');
+      return;
+    }
+  }
+
+  if (_dragFromIdx === 'avail') {
+    if (!toTeam) return;
+    if (!toTeam.members.includes(_dragUid)) toTeam.members.push(_dragUid);
+    if (toTeam.members.length > 1) toTeam.confirmedAlone = false;
+  } else {
+    if (toIdx === _dragFromIdx) return;
+    const fromTeam = teamsData.list[_dragFromIdx];
+    if (!fromTeam || !toTeam) return;
+    fromTeam.members = fromTeam.members.filter(id => id !== _dragUid);
+    if (!toTeam.members.includes(_dragUid)) toTeam.members.push(_dragUid);
+    if (toTeam.members.length > 1) toTeam.confirmedAlone = false;
+    if (fromTeam.members.length === 0) {
+      teamsData.list.splice(_dragFromIdx, 1);
+    } else if (fromTeam.members.length > 1) {
+      fromTeam.confirmedAlone = false;
+    }
+  }
+
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+function teamDropToPool() {
+  if (_dragUid === null || _dragFromIdx === 'avail') return;
+  const teamsData = getTeamsToday();
+  const fromTeam = teamsData.list[_dragFromIdx];
+  if (fromTeam && getActiveBusyTeamIds().has(fromTeam.id)) {
+    showNotif('🔒', 'Заключено', 'Екипът е на активна задача — съставът не може да се променя.', 'nt-warn');
+    return;
+  }
+  fromTeam.members = fromTeam.members.filter(id => id !== _dragUid);
+  if (fromTeam.members.length === 0) {
+    teamsData.list.splice(_dragFromIdx, 1);
+  } else if (fromTeam.members.length > 1) {
+    fromTeam.confirmedAlone = false;
+  }
+  saveTeamsToday(teamsData);
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+function initTeamDragDrop() {
+  // Touch fallback hint
+  if ('ontouchstart' in window) {
+    document.querySelectorAll('.drag-member').forEach(el => {
+      el.title = 'Задръжте и провлачете за да преместите';
+    });
+  }
+}
+
+function confirmTeamAlone(teamIdx) {
+  const teamsData = getTeamsToday();
+  if (!teamsData.list[teamIdx]) return;
+  teamsData.list[teamIdx].confirmedAlone = true;
+  saveTeamsToday(teamsData);
+  renderTeams();
+}
+
+function populateVehicleSelect(currentVehicleId, excludeTeamIdx) {
+  const teamsData = getTeamsToday();
+  const usedVehicleIds = new Set(
+    teamsData.list
+      .filter((_, i) => i !== excludeTeamIdx)
+      .map(t => t.vehicleId)
+      .filter(Boolean)
+  );
+  const vehicles = getVehicles();
+  const sel = document.getElementById('team-form-vehicle');
+  sel.innerHTML = '<option value="">— Без автомобил —</option>' +
+    vehicles.map(v => {
+      const disabled = usedVehicleIds.has(v.id);
+      const selected = v.id === currentVehicleId;
+      return `<option value="${v.id}" ${selected?'selected':''} ${disabled?'disabled style="color:var(--text3);"':''}>
+        ${esc(v.name)}${v.plate?' ('+esc(v.plate)+')':''}${disabled?' — зает':''}
+      </option>`;
+    }).join('');
+}
+
+function openTeamFormModal() {
+  const db = getDB();
+  const teamsData = getTeamsToday();
+  const assignedIds = new Set(teamsData.list.flatMap(t => t.members));
+  const available = db.users.filter(u => u.role === 'worker' && isPresent(u.id) && !assignedIds.has(u.id));
+
+  document.getElementById('modal-team-title').textContent = 'Нов екип';
+  document.getElementById('team-edit-id').value = '';
+
+  if (!available.length) {
+    showNotif('⚠️','Няма налични','Всички присъстващи работници вече са разпределени.','nt-warn');
+    return;
+  }
+
+  document.getElementById('team-form-workers').innerHTML = available.map(u => {
+    const [bg, tc] = avCol(u.id);
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;" id="tf-row-${u.id}">
+      <input type="checkbox" value="${u.id}" onchange="this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--border)';this.closest('label').style.background=this.checked?'var(--accent-bg)':''">
+      <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+      <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+    </label>`;
+  }).join('');
+
+  populateVehicleSelect(null, -1);
+  document.getElementById('modal-team-form').style.display = 'flex';
+}
+
+function openEditTeamModal(teamIdx) {
+  const db = getDB();
+  const teamsData = getTeamsToday();
+  const team = teamsData.list[teamIdx];
+  if (!team) return;
+
+  document.getElementById('modal-team-title').textContent = `Редактиране — Екип ${teamIdx + 1}`;
+  document.getElementById('team-edit-id').value = String(teamIdx);
+
+  const otherAssigned = new Set(teamsData.list.flatMap((t, i) => i === teamIdx ? [] : t.members));
+  const available = db.users.filter(u => u.role === 'worker' && isPresent(u.id) && !otherAssigned.has(u.id));
+
+  document.getElementById('team-form-workers').innerHTML = available.map(u => {
+    const [bg, tc] = avCol(u.id);
+    const checked = team.members.includes(u.id);
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid ${checked?'var(--accent)':'var(--border)'};border-radius:var(--r-sm);cursor:pointer;background:${checked?'var(--accent-bg)':''};" id="tf-row-${u.id}">
+      <input type="checkbox" value="${u.id}" ${checked?'checked':''} onchange="this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--border)';this.closest('label').style.background=this.checked?'var(--accent-bg)':''">
+      <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
+      <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+    </label>`;
+  }).join('');
+
+  populateVehicleSelect(team.vehicleId || null, teamIdx);
+  document.getElementById('modal-team-form').style.display = 'flex';
+}
+
+// Pending single-member save data
+let _pendingSingleMembers = null;
+let _pendingSingleVehicle = null;
+let _pendingSingleEditIdx = null;
+
+function saveTeam() {
+  const members = Array.from(document.querySelectorAll('#team-form-workers input:checked')).map(c => c.value);
+  const vehicleId = document.getElementById('team-form-vehicle').value || null;
+  const editIdx = document.getElementById('team-edit-id').value;
+
+  if (!members.length) { showNotif('⚠️','Няма избрани','Изберете поне един работник.','nt-warn'); return; }
+
+  if (members.length === 1) {
+    // Require confirmation with dispatcher password
+    const db = getDB();
+    const u = db.users.find(x => x.id === members[0]);
+    document.getElementById('single-confirm-name').textContent = u ? `${u.fname} ${u.lname}` : members[0];
+    document.getElementById('single-confirm-pass').value = '';
+    _pendingSingleMembers = members;
+    _pendingSingleVehicle = vehicleId;
+    _pendingSingleEditIdx = editIdx;
+    document.getElementById('modal-single-confirm').style.display = 'flex';
+    return;
+  }
+
+  commitSaveTeam(members, vehicleId, editIdx);
+}
+
+function confirmSingleTeam() {
+  const pass = document.getElementById('single-confirm-pass').value;
+  const db = getDB();
+  if (!currentUser || db.users.find(u => u.id === currentUser.id)?.password !== pass) {
+    showNotif('⚠️','Грешна парола','Паролата не съвпада.','nt-warn');
+    return;
+  }
+  closeModal('modal-single-confirm');
+  commitSaveTeam(_pendingSingleMembers, _pendingSingleVehicle, _pendingSingleEditIdx);
+  _pendingSingleMembers = null; _pendingSingleVehicle = null; _pendingSingleEditIdx = null;
+}
+
+function commitSaveTeam(members, vehicleId, editIdx) {
+  const teamsData = getTeamsToday();
+  if (editIdx !== '' && editIdx !== null) {
+    teamsData.list[parseInt(editIdx)].members = members;
+    teamsData.list[parseInt(editIdx)].vehicleId = vehicleId;
+    showNotif('✅','Екипът е обновен',`${members.length} члена`,'nt-ok');
+  } else {
+    teamsData.list.unshift({ id: uid(), members, vehicleId });
+    showNotif('✅','Екипът е сформиран',`${members.length} члена`,'nt-ok');
+  }
+  saveTeamsToday(teamsData);
+  closeModal('modal-team-form');
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+function resetTeams() {
+  const busyIds = getActiveBusyTeamIds();
+  if (busyIds.size === 0) {
+    saveTeamsToday({ list: [] });
+    showNotif('↺', 'Нулирано', 'Всички екипи са изчистени.', 'nt-ok');
+  } else {
+    const teamsData = getTeamsToday();
+    const kept = teamsData.list.filter(t => busyIds.has(t.id));
+    saveTeamsToday({ list: kept });
+    showNotif('↺', 'Частично нулиране', `${busyIds.size} екип(а) с активна задача са запазени.`, 'nt-ok');
+  }
+  renderTeams();
+  renderDispatchTeamSel();
+}
+
+// ── Dispatch team selector (uses today's pre-formed teams) ──
+let _selectedDispatchTeamId = null;
+
+function renderDispatchTeamSel() {
+  const db = getDB();
+  const teamsData = getTeamsToday();
+  const el = document.getElementById('dispatch-team-sel');
+  if (!el) return;
+
+  if (!teamsData.list.length) {
+    el.innerHTML = `<div class="empty" style="padding:20px;">
+      <div class="empty-ico">👥</div>
+      <div class="empty-t">Няма сформирани екипи</div>
+      <div class="empty-d">Отидете в „Екипи" за да сформирате екипите за деня</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="showSection('teams')">Към Екипи →</button>
+    </div>`;
+    _selectedDispatchTeamId = null;
+    return;
+  }
+
+  // Find which team IDs have an active task today
+  const today = todayStr();
+  const activeBusyIds = new Set(
+    db.tasks
+      .filter(t => t.date === today && t.status === 'active' && t.teamId)
+      .map(t => t.teamId)
+  );
+
+  const vehicles = getVehicles();
+  el.innerHTML = teamsData.list.map((team, idx) => {
+    const vehicle = team.vehicleId ? vehicles.find(v => v.id === team.vehicleId) : null;
+    const busy = activeBusyIds.has(team.id);
+    const sel = _selectedDispatchTeamId === team.id;
+    const memberNames = team.members.map(id => {
+      const u = db.users.find(x => x.id === id);
+      return u ? `${u.fname} ${u.lname}` : id;
+    }).join(', ');
+
+    const vehHtml = vehicle
+      ? `<span onclick="event.stopPropagation();showVehicleEquip('${vehicle.id}')" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text2);cursor:pointer;" title="Виж оборудването">🚗 ${esc(vehicle.name)}</span>`
+      : '';
+
+    if (busy) {
+      return `<div style="padding:10px 12px;border:2px solid var(--border);border-radius:var(--r-sm);margin-bottom:8px;background:var(--surface2);opacity:.6;cursor:not-allowed;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:var(--text2);">Екип ${idx+1}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fee2e2;color:#991b1b;">⚡ На задача</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px;">${esc(memberNames)}</div>
+        ${vehHtml ? `<div style="margin-top:4px;">${vehHtml}</div>` : ''}
+      </div>`;
+    }
+
+    return `<div onclick="selectDispatchTeam('${team.id}')" style="padding:10px 12px;border:2px solid ${sel?'var(--accent)':'var(--border)'};border-radius:var(--r-sm);cursor:pointer;margin-bottom:8px;background:${sel?'var(--accent-bg)':'var(--surface)'};transition:all .15s;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;font-weight:700;">Екип ${idx+1}</span>
+        ${vehHtml}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;">${esc(memberNames)}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectDispatchTeam(teamId) {
+  _selectedDispatchTeamId = teamId;
+  renderDispatchTeamSel();
+}
+
+// ══════════════════════════════════════════════════════════════
+// АВТОМОБИЛИ
+// ══════════════════════════════════════════════════════════════
+const DEFAULT_VEHICLES = [
+  'Тойота 03','Тойота 33','Нисан Навара','Форд Рейнджър','Оранжев Форд',
+  'Вишка','Стара вишка','Рено Трафик','Рено Мастър','Опел Самосвал','Бус Опел'
+];
+
+function getVehicles() {
+  const db = getDB();
+  if (!db.vehicles) {
+    db.vehicles = DEFAULT_VEHICLES.map((name, i) => ({ id: 'v' + i, name, plate: '', equipment: [] }));
+    saveDB(db);
+  }
+  db.vehicles.forEach(v => { if (!v.equipment) v.equipment = []; });
+  // Sort: vehicles with createdAt (newly added) first, then defaults (no createdAt) in original order
+  return [...db.vehicles].sort((a, b) => {
+    if (a.createdAt && b.createdAt) return b.createdAt - a.createdAt;
+    if (a.createdAt) return -1;
+    if (b.createdAt) return 1;
+    return 0;
+  });
+}
+
+function renderVehicles() {
+  const vehicles = getVehicles();
+  const el = document.getElementById('vehicles-list');
+  if (!el) return;
+  if (!vehicles.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🚗</div><div class="empty-t">Няма добавени автомобили</div></div>';
+    return;
+  }
+  // Newest first — unshift ensures new vehicles are at index 0
+  el.innerHTML = `<div style="overflow-x:auto;"><table class="admin-table">
+    <thead><tr><th>#</th><th>Наименование</th><th>Рег. номер</th><th>Оборудване</th><th>Действия</th></tr></thead>
+    <tbody>${vehicles.map((v, i) => `<tr>
+      <td style="color:var(--text3);font-size:12px;">${i + 1}</td>
+      <td style="font-weight:600;">${esc(v.name)}</td>
+      <td class="mono" style="font-size:12px;color:var(--text2);">${esc(v.plate || '—')}</td>
+      <td>
+        <span style="font-size:12px;color:var(--text2);">${v.equipment.length} бр.</span>
+        <button class="btn btn-xs btn-ghost" style="margin-left:6px;" onclick="openEquipmentEditModal('${v.id}')">📋 Оборудване</button>
+      </td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-xs btn-ghost" onclick="openVehicleModal('${v.id}')">Редактирай</button>
+        <button class="btn btn-xs btn-red" onclick="deleteVehicle('${v.id}')">Изтрий</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function openVehicleModal(vehicleId) {
+  const vehicles = getVehicles();
+  const v = vehicleId ? vehicles.find(x => x.id === vehicleId) : null;
+  document.getElementById('modal-vehicle-title').textContent = v ? 'Редактирай автомобил' : 'Нов автомобил';
+  document.getElementById('v-name').value = v ? v.name : '';
+  document.getElementById('v-plate').value = v ? v.plate : '';
+  document.getElementById('v-edit-id').value = v ? v.id : '';
+  document.getElementById('modal-vehicle').style.display = 'flex';
+}
+
+function saveVehicle() {
+  const name = document.getElementById('v-name').value.trim();
+  const plate = document.getElementById('v-plate').value.trim();
+  const editId = document.getElementById('v-edit-id').value;
+  if (!name) { showNotif('⚠️','Липсва наименование','Въведете наименование на автомобила.','nt-warn'); return; }
+  const db = getDB();
+  if (!db.vehicles) db.vehicles = [];
+  if (editId) {
+    const v = db.vehicles.find(x => x.id === editId);
+    if (v) { v.name = name; v.plate = plate; }
+    showNotif('🚗','Обновен',name,'nt-ok');
+  } else {
+    db.vehicles.unshift({ id: 'v' + uid(), name, plate, equipment: [], createdAt: Date.now() });
+    showNotif('🚗','Добавен',name,'nt-ok');
+  }
+  saveDB(db);
+  closeModal('modal-vehicle');
+  renderVehicles();
+}
+
+function deleteVehicle(vehicleId) {
+  const db = getDB();
+  const v = db.vehicles?.find(x => x.id === vehicleId);
+  if (!v) return;
+  db.vehicles = db.vehicles.filter(x => x.id !== vehicleId);
+  saveDB(db);
+  renderVehicles();
+  showNotif('🗑️','Изтрит',esc(v.name),'nt-ok');
+}
+
+// ── Equipment ──
+function openEquipmentModal(vehicleId) {
+  const vehicles = getVehicles();
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  document.getElementById('modal-equip-title').textContent = `Оборудване — ${v.name}`;
+  document.getElementById('equip-vehicle-id').value = vehicleId;
+  document.getElementById('equip-new-item').value = '';
+  renderEquipList(v);
+  document.getElementById('modal-equipment').style.display = 'flex';
+}
+
+function renderEquipList(v, readOnly) {
+  const el = document.getElementById('equip-list');
+  if (!v.equipment.length) {
+    el.innerHTML = '<div style="padding:16px 0;text-align:center;font-size:13px;color:var(--text3);">Няма зачислено оборудване</div>';
+    return;
+  }
+  el.innerHTML = v.equipment.map((item, idx) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;">${esc(item)}</span>
+      ${readOnly ? '' : `<button class="btn btn-xs btn-red" onclick="removeEquipItem(${idx})">✕</button>`}
+    </div>`).join('');
+}
+
+function addEquipItem() {
+  const input = document.getElementById('equip-new-item');
+  const item = input.value.trim();
+  if (!item) return;
+  const vehicleId = document.getElementById('equip-vehicle-id').value;
+  const db = getDB();
+  const v = db.vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  if (!v.equipment) v.equipment = [];
+  v.equipment.push(item);
+  saveDB(db);
+  input.value = '';
+  renderEquipList(v, false);
+  renderVehicles();
+}
+
+function removeEquipItem(idx) {
+  const vehicleId = document.getElementById('equip-vehicle-id').value;
+  const db = getDB();
+  const v = db.vehicles.find(x => x.id === vehicleId);
+  if (!v || !v.equipment) return;
+  v.equipment.splice(idx, 1);
+  saveDB(db);
+  renderEquipList(v, false);
+  renderVehicles();
+}
+
+
+// ── Vehicle equipment quick-view (read-only, works from anywhere) ──
+function showVehicleEquip(vehicleId) {
+  const vehicles = getVehicles();
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  document.getElementById('modal-equip-title').textContent = `🚗 ${v.name}${v.plate ? ' · ' + v.plate : ''} — Оборудване`;
+  document.getElementById('equip-vehicle-id').value = vehicleId;
+  document.getElementById('equip-new-item').value = '';
+  document.getElementById('equip-add-row').style.display = 'none';
+  renderEquipList(v, true);
+  document.getElementById('modal-equipment').style.display = 'flex';
+}
+
+function openEquipmentEditModal(vehicleId) {
+  const vehicles = getVehicles();
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  document.getElementById('modal-equip-title').textContent = `Оборудване — ${v.name}`;
+  document.getElementById('equip-vehicle-id').value = vehicleId;
+  document.getElementById('equip-new-item').value = '';
+  const addRow = document.getElementById('equip-add-row');
+  if (addRow) addRow.style.display = 'flex';
+  renderEquipList(v, false);
+  document.getElementById('modal-equipment').style.display = 'flex';
+}
+
+function closeModal(id){document.getElementById(id).style.display='none';}
+document.querySelectorAll('.modal-bg').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.style.display='none';});});
+
+function showNotif(icon,title,msg,type=''){
+  const tray=document.getElementById('notif-tray');
+  const id='n'+uid();
+  const el=document.createElement('div');
+  el.className=`notif ${type}`;el.id=id;
+  el.innerHTML=`<div class="notif-ico">${icon}</div><div class="notif-body"><div class="notif-title">${title}</div><div class="notif-msg">${msg}</div></div><button class="notif-x" onclick="document.getElementById('${id}').remove()">×</button>`;
+  tray.appendChild(el);
+  setTimeout(()=>{const n=document.getElementById(id);if(n)n.remove();},5000);
+}
+
+</script>
+</body>
+</html>
