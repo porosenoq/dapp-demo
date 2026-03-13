@@ -205,7 +205,15 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif}
 .tab-btn{padding:8px 16px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
 
-/* ── Admin ── */
+/* ── Бази и отряди ── */
+.base-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap;}
+.base-pavlovo{background:#eef3ff;color:#1a56db;}
+.base-svoboda{background:#edfaf3;color:#0f7b4c;}
+.base-siniVir{background:#fffbeb;color:#b45309;}
+.base-mramor{background:#ede9fe;color:#6d28d9;}
+.squad-leader{font-size:10px;color:var(--amber);margin-left:2px;}
+
+
 .admin-table{width:100%;border-collapse:collapse;}
 .admin-table th{text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);}
 .admin-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
@@ -362,10 +370,7 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif}
       </div>
       <div class="pg-sub">Натиснете върху служител, за да промените присъствието му за днес</div>
       <div class="card" style="margin-bottom:16px;" id="att-summary"></div>
-      <div class="section-lbl">Диспечери</div>
-      <div class="ppl-grid" id="att-dispatchers"></div>
-      <div class="section-lbl">Работници</div>
-      <div class="ppl-grid" id="att-workers"></div>
+      <div id="att-groups"></div>
     </div>
 
     <!-- Dispatch -->
@@ -459,7 +464,7 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif}
         </div>
         <button class="btn btn-primary btn-sm" onclick="applyTodayFromSchedule()">📋 Приложи за днес</button>
       </div>
-      <div class="pg-sub">Натиснете клетка за да изберете смяна. Промените се записват автоматично.</div>
+      <div class="pg-sub">Натиснете клетка за да изберете смяна. Промените се записват автоматично и се отразяват в Присъствие.</div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
         <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#dbeafe;color:#1d4ed8;">Д — Дневна 08–20</span>
@@ -468,6 +473,7 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif}
         <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fef9c3;color:#a16207;">О — Отпуска</span>
         <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ffedd5;color:#c2410c;">К — Командировка</span>
         <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fee2e2;color:#991b1b;">Б — Болничен</span>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#1f2937;color:#f9fafb;">X — Отсъства (извънредно)</span>
         <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--surface2);color:var(--text3);">(празно) — Почивен</span>
       </div>
 
@@ -665,6 +671,16 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif}
       <label class="fl">Рег. номер (по избор)</label>
       <input class="fi" id="v-plate" placeholder="напр. СА 1234 АВ">
     </div>
+    <div class="fg">
+      <label class="fl">База</label>
+      <select class="fs" id="v-base">
+        <option value="">— Не е определена —</option>
+        <option value="pavlovo">База Павлово</option>
+        <option value="svoboda">База Свобода</option>
+        <option value="siniVir">База Сини Вир</option>
+        <option value="mramor">База Мрамор</option>
+      </select>
+    </div>
     <input type="hidden" id="v-edit-id">
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-vehicle')">Отказ</button>
@@ -738,61 +754,168 @@ function avCol(id){const i=Math.abs(hashStr(id))%AVATAR_PALETTES.length;return A
 function hashStr(s){let h=0;for(let c of s){h=(h<<5)-h+c.charCodeAt(0);h|=0;}return h;}
 
 // ── Data ──
+// Пълна таблица: id → { base, squad, order, regularOnly }
+const USER_META = {
+  admin:  { base:'pavlovo', squad:'dispatchers', order:0,  regularOnly:false },
+  d1:     { base:'pavlovo', squad:'dispatchers', order:1,  regularOnly:false },
+  d2:     { base:'pavlovo', squad:'dispatchers', order:2,  regularOnly:false },
+  d3:     { base:'pavlovo', squad:'dispatchers', order:3,  regularOnly:false },
+  d4:     { base:'pavlovo', squad:'dispatchers', order:4,  regularOnly:false },
+  d5:     { base:'pavlovo', squad:'dispatchers', order:5,  regularOnly:false },
+  w1:     { base:'svoboda', squad:'krumov',      order:6,  regularOnly:false },
+  w2:     { base:'svoboda', squad:'krumov',      order:7,  regularOnly:false },
+  w3:     { base:'svoboda', squad:'krumov',      order:8,  regularOnly:false },
+  w4:     { base:'svoboda', squad:'krumov',      order:9,  regularOnly:false },
+  w5:     { base:'svoboda', squad:'krumov',      order:10, regularOnly:false },
+  w6:     { base:'svoboda', squad:'krumov',      order:11, regularOnly:false },
+  w7:     { base:'siniVir', squad:'krumov',      order:12, regularOnly:false },
+  w8:     { base:'siniVir', squad:'krumov',      order:13, regularOnly:false },
+  w9:     { base:'pavlovo', squad:'gergov',      order:14, regularOnly:false },
+  w10:    { base:'pavlovo', squad:'gergov',      order:15, regularOnly:false },
+  w11:    { base:'pavlovo', squad:'gergov',      order:16, regularOnly:false },
+  w12:    { base:'pavlovo', squad:'gergov',      order:17, regularOnly:false },
+  w13:    { base:'pavlovo', squad:'gergov',      order:18, regularOnly:false },
+  w14:    { base:'pavlovo', squad:'gergov',      order:19, regularOnly:false },
+  w15:    { base:'pavlovo', squad:'lyubenov',    order:20, regularOnly:false },
+  w16:    { base:'pavlovo', squad:'lyubenov',    order:21, regularOnly:false },
+  w17:    { base:'pavlovo', squad:'lyubenov',    order:22, regularOnly:false },
+  w18:    { base:'pavlovo', squad:'lyubenov',    order:23, regularOnly:false },
+  w19:    { base:'pavlovo', squad:'lyubenov',    order:24, regularOnly:false },
+  w20:    { base:'mramor',  squad:'yankov',      order:25, regularOnly:false },
+  w21:    { base:'mramor',  squad:'yankov',      order:26, regularOnly:false },
+  w22:    { base:'mramor',  squad:'yankov',      order:27, regularOnly:false },
+  w23:    { base:'mramor',  squad:'yankov',      order:28, regularOnly:false },
+  w24:    { base:'mramor',  squad:'yankov',      order:29, regularOnly:false },
+  w25:    { base:'mramor',  squad:'yankov',      order:30, regularOnly:false },
+  w26:    { base:'mramor',  squad:'yankov',      order:31, regularOnly:false },
+  w27:    { base:'mramor',  squad:'yankov',      order:32, regularOnly:false },
+  w28:    { base:'mramor',  squad:'yankov',      order:33, regularOnly:false },
+  w29:    { base:'mramor',  squad:'yankov',      order:34, regularOnly:false },
+  w30:    { base:'pavlovo', squad:'regular',     order:35, regularOnly:true  },
+  w31:    { base:'pavlovo', squad:'regular',     order:36, regularOnly:true  },
+  w32:    { base:'pavlovo', squad:'regular',     order:37, regularOnly:true  },
+  w33:    { base:'pavlovo', squad:'regular',     order:38, regularOnly:true  },
+};
+
+function migrateDB(db) {
+  let dirty = false;
+  // 1. Patch missing base/squad/order/regularOnly on existing users
+  db.users.forEach(u => {
+    const meta = USER_META[u.id];
+    if (!meta) return;
+    if (!u.base   || u.base   !== meta.base)   { u.base        = meta.base;        dirty = true; }
+    if (!u.squad  || u.squad  !== meta.squad)  { u.squad       = meta.squad;       dirty = true; }
+    if (u.order   === undefined)               { u.order       = meta.order;       dirty = true; }
+    if (u.regularOnly === undefined)           { u.regularOnly = meta.regularOnly; dirty = true; }
+  });
+  // 2. Fix dispatcher order — old db had wrong order (d2=Владимир was second, now Ивайло should be second)
+  const nameToId = { 'Сергей':'d1','Ивайло':'d2','Владимир':'d3','Георги':'d4','Красимир':'d5' };
+  db.users.filter(u=>u.role==='dispatcher').forEach(u=>{
+    const correctId = nameToId[u.fname];
+    if(correctId && u.id !== correctId) {
+      u.id = correctId;
+      const meta = USER_META[correctId];
+      if(meta){ u.base=meta.base; u.squad=meta.squad; u.order=meta.order; }
+      dirty = true;
+    }
+  });
+  // 3. Ensure users are sorted by order
+  db.users.sort((a,b) => (a.order||99) - (b.order||99));
+  if (dirty) saveDB(db);
+  return db;
+}
+
 function getDB(){
-  try{const r=localStorage.getItem(SK);if(r)return JSON.parse(r);}catch(e){}
+  try{
+    const r=localStorage.getItem(SK);
+    if(r){
+      const db=JSON.parse(r);
+      return migrateDB(db);
+    }
+  }catch(e){}
   return initDB();
 }
 function saveDB(db){localStorage.setItem(SK,JSON.stringify(db));}
+// ── Бази и отряди (константи) ──────────────────────────────────
+const BASES = {
+  pavlovo:  { id:'pavlovo',  label:'База Павлово',  color:'#1a56db', bg:'#eef3ff' },
+  svoboda:  { id:'svoboda',  label:'База Свобода',  color:'#0f7b4c', bg:'#edfaf3' },
+  siniVir:  { id:'siniVir',  label:'База Сини Вир', color:'#b45309', bg:'#fffbeb' },
+  mramor:   { id:'mramor',   label:'База Мрамор',   color:'#6d28d9', bg:'#ede9fe' },
+};
+const SQUADS = {
+  dispatchers: { id:'dispatchers', label:'Диспечери',        leader:'d1' },
+  krumov:      { id:'krumov',      label:'Отряд Крумов',     leader:'w1' },
+  gergov:      { id:'gergov',      label:'Отряд Гергов',     leader:'w9' },
+  lyubenov:    { id:'lyubenov',    label:'Отряд Любенов',    leader:'w15' },
+  yankov:      { id:'yankov',      label:'Отряд Янков',      leader:'w20' },
+  regular:     { id:'regular',     label:'Редовна смяна',    leader:null },
+};
+// Потребители само с редовна смяна (Д и Н са забранени)
+const REGULAR_ONLY_IDS = new Set(['w30','w31','w32','w33']);
+
 function initDB(){
   const db={
     users: [
-      {id:'admin',fname:'Администратор',lname:'',username:'admin',password:'admin123',role:'admin'},
-      {id:'d1',fname:'Сергей', lname:'Ставриев', username:'sergey.s', password:'pass123',role:'dispatcher'},
-      {id:'d2',fname:'Владимир',lname:'Коцев',   username:'vladimir.k',password:'pass123',role:'dispatcher'},
-      {id:'d3',fname:'Ивайло', lname:'Видинов',  username:'ivaylo.v', password:'pass123',role:'dispatcher'},
-      {id:'d4',fname:'Георги', lname:'Стоилов',  username:'georgi.st',password:'pass123',role:'dispatcher'},
-      {id:'d5',fname:'Красимир',lname:'Пиронков',username:'krasimir.p',password:'pass123',role:'dispatcher'},
+      {id:'admin', fname:'Администратор',lname:'', username:'admin', password:'admin123', role:'admin', base:'pavlovo', squad:'dispatchers', order:0},
+      // Диспечери — База Павлово, Отряд Диспечери
+      {id:'d1',fname:'Сергей',  lname:'Ставриев', username:'sergey.s',  password:'pass123',role:'dispatcher',base:'pavlovo',squad:'dispatchers',order:1},
+      {id:'d2',fname:'Ивайло',  lname:'Видинов',  username:'ivaylo.v',  password:'pass123',role:'dispatcher',base:'pavlovo',squad:'dispatchers',order:2},
+      {id:'d3',fname:'Владимир',lname:'Коцев',    username:'vladimir.k',password:'pass123',role:'dispatcher',base:'pavlovo',squad:'dispatchers',order:3},
+      {id:'d4',fname:'Георги',  lname:'Стоилов',  username:'georgi.st', password:'pass123',role:'dispatcher',base:'pavlovo',squad:'dispatchers',order:4},
+      {id:'d5',fname:'Красимир',lname:'Пиронков', username:'krasimir.p',password:'pass123',role:'dispatcher',base:'pavlovo',squad:'dispatchers',order:5},
     ],
     attendance:{},
     tasks:[],
     barriers:[]
   };
+  // [fname, lname, username, base, squad, order]
   const wnames=[
-    ['Кирил',    'Крумов',       'kiril.k'],
-    ['Пламен',   'Цеков',        'plamen.c'],
-    ['Витан',    'Витанов',      'vitan.v'],
-    ['Илиян',    'Владимиров',   'iliyan.vl'],
-    ['Цветозар', 'Енчев',        'cvetozar.e'],
-    ['Деян',     'Христов',      'deyan.h'],
-    ['Антон',    'Таранджийски', 'anton.t'],
-    ['Петър',    'Викторов',     'petar.vi'],
-    ['Венцислав','Гергов',       'vencislav.g'],
-    ['Петър',    'Христев',      'petar.hr'],
-    ['Станимир', 'Цачев',        'stanimir.c'],
-    ['Николай',  'Беличев',      'nikolay.b'],
-    ['Огнян',    'Велинов',      'ognyan.vel'],
-    ['Георги',   'Таков',        'georgi.t'],
-    ['Венцислав','Любенов',      'vencislav.l'],
-    ['Ангел',    'Манавски',     'angel.m'],
-    ['Ивайло',   'Найденов',     'ivaylo.n'],
-    ['Траян',    'Митрев',       'trayan.m'],
-    ['Виктор',   'Георгиев',     'viktor.g'],
-    ['Янко',     'Янков',        'yanko.y'],
-    ['Любомир',  'Здравков',     'lyubomir.z'],
-    ['Юлиан',    'Веселинов',    'yulian.v'],
-    ['Ивайло',   'Йорданов',     'ivaylo.yo'],
-    ['Росен',    'Пашов',        'rosen.p'],
-    ['Петър',    'Захариев',     'petar.za'],
-    ['Денислав', 'Светославов',  'denislav.sv'],
-    ['Георги',   'Илков',        'georgi.il'],
-    ['Марти',    'Димитров',     'marti.d'],
-    ['Васко',    'Григоров',     'vasko.gr'],
-    ['Денислав', 'Енчев',        'denislav.e'],
-    ['Йордан',   'Михайлов',     'yordan.m'],
-    ['Петър',    'Михайлов',     'petar.mi'],
-    ['Петър',    'Стоянов',      'petar.st'],
+    // Отряд Крумов — База Свобода (w1-w6)
+    ['Кирил',    'Крумов',       'kiril.k',     'svoboda', 'krumov',   6],
+    ['Пламен',   'Цеков',        'plamen.c',    'svoboda', 'krumov',   7],
+    ['Витан',    'Витанов',      'vitan.v',     'svoboda', 'krumov',   8],
+    ['Илиян',    'Владимиров',   'iliyan.vl',   'svoboda', 'krumov',   9],
+    ['Цветозар', 'Енчев',        'cvetozar.e',  'svoboda', 'krumov',  10],
+    ['Деян',     'Христов',      'deyan.h',     'svoboda', 'krumov',  11],
+    // Отряд Крумов — База Сини Вир (w7-w8)
+    ['Антон',    'Таранджийски', 'anton.t',     'siniVir', 'krumov',  12],
+    ['Петър',    'Викторов',     'petar.vi',    'siniVir', 'krumov',  13],
+    // Отряд Гергов — База Павлово (w9-w14)
+    ['Венцислав','Гергов',       'vencislav.g', 'pavlovo', 'gergov',  14],
+    ['Петър',    'Христев',      'petar.hr',    'pavlovo', 'gergov',  15],
+    ['Станимир', 'Цачев',        'stanimir.c',  'pavlovo', 'gergov',  16],
+    ['Николай',  'Беличев',      'nikolay.b',   'pavlovo', 'gergov',  17],
+    ['Огнян',    'Велинов',      'ognyan.vel',  'pavlovo', 'gergov',  18],
+    ['Георги',   'Таков',        'georgi.t',    'pavlovo', 'gergov',  19],
+    // Отряд Любенов — База Павлово (w15-w19)
+    ['Венцислав','Любенов',      'vencislav.l', 'pavlovo', 'lyubenov',20],
+    ['Ангел',    'Манавски',     'angel.m',     'pavlovo', 'lyubenov',21],
+    ['Ивайло',   'Найденов',     'ivaylo.n',    'pavlovo', 'lyubenov',22],
+    ['Траян',    'Митрев',       'trayan.m',    'pavlovo', 'lyubenov',23],
+    ['Виктор',   'Георгиев',     'viktor.g',    'pavlovo', 'lyubenov',24],
+    // Отряд Янков — База Мрамор (w20-w29)
+    ['Янко',     'Янков',        'yanko.y',     'mramor',  'yankov',  25],
+    ['Любомир',  'Здравков',     'lyubomir.z',  'mramor',  'yankov',  26],
+    ['Юлиан',    'Веселинов',    'yulian.v',    'mramor',  'yankov',  27],
+    ['Ивайло',   'Йорданов',     'ivaylo.yo',   'mramor',  'yankov',  28],
+    ['Росен',    'Пашов',        'rosen.p',     'mramor',  'yankov',  29],
+    ['Петър',    'Захариев',     'petar.za',    'mramor',  'yankov',  30],
+    ['Денислав', 'Светославов',  'denislav.sv', 'mramor',  'yankov',  31],
+    ['Георги',   'Илков',        'georgi.il',   'mramor',  'yankov',  32],
+    ['Марти',    'Димитров',     'marti.d',     'mramor',  'yankov',  33],
+    ['Васко',    'Григоров',     'vasko.gr',    'mramor',  'yankov',  34],
+    // Редовна смяна — База Павлово (w30-w33)
+    ['Денислав', 'Енчев',        'denislav.e',  'pavlovo', 'regular', 35],
+    ['Йордан',   'Михайлов',     'yordan.m',    'pavlovo', 'regular', 36],
+    ['Петър',    'Михайлов',     'petar.mi',    'pavlovo', 'regular', 37],
+    ['Петър',    'Стоянов',      'petar.st',    'pavlovo', 'regular', 38],
   ];
-  wnames.forEach((n,i)=>db.users.push({id:'w'+(i+1),fname:n[0],lname:n[1],username:n[2],password:'worker123',role:'worker'}));
+  wnames.forEach((n,i)=>db.users.push({
+    id:'w'+(i+1), fname:n[0], lname:n[1], username:n[2],
+    password:'worker123', role:'worker',
+    base:n[3], squad:n[4], order:n[5]
+  }));
   saveDB(db);
   return db;
 }
@@ -862,8 +985,17 @@ function enterApp(user){
   renderNav();
   const firstSec=user.role==='worker'?'tasks':(user.role==='admin'?'admin':'dashboard');
   showSection(firstSec);
+  // Автоматично приложи графика ако е нова дата
+  autoApplyTodayIfNeeded();
   renderAll();
   startPolling();
+  // Опреснявай присъствието на всеки 5 минути (за смяна на часовия прозорец)
+  setInterval(()=>{
+    autoApplyTodayIfNeeded();
+    renderAttendance();
+    updateBadges();
+    renderDashboard();
+  }, 5 * 60 * 1000);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1005,46 +1137,161 @@ function miniTaskCard(t,db){
 function getAttToday(){const db=getDB();return db.attendance[todayStr()]||{};}
 function isPresent(uid){return getAttToday()[uid]===true;}
 function toggleAtt(uid){
-  const db=getDB();const today=todayStr();
+  const db=getDB(); const today=todayStr();
   if(!db.attendance[today])db.attendance[today]={};
-  db.attendance[today][uid]=!isPresent(uid);
-  saveDB(db);renderAttendance();renderTeamSelector();updateBadges();renderDashboard();
+  const wasPresent = isPresent(uid);
+  const nowPresent = !wasPresent;
+  db.attendance[today][uid] = nowPresent;
+
+  // ── Корелация Присъствие → График (за днешния ден) ───────────
+  const now = new Date();
+  const yr = now.getFullYear(), mo = now.getMonth(), day = now.getDate();
+  if(!db.schedules) db.schedules={};
+  const key = getSchedKey(yr, mo);
+  if(!db.schedules[key]) db.schedules[key]={};
+  if(!db.schedules[key][uid]) db.schedules[key][uid]={};
+  const currentShift = db.schedules[key][uid][day] || null;
+
+  if (!nowPresent) {
+    // Маркиран като отсъстващ — ако имаше работна смяна (Д/Н/Р), слагаме X
+    if (!currentShift || ['Д','Н','Р'].includes(currentShift)) {
+      db.schedules[key][uid][day] = 'X';
+    }
+    // Ако вече е О/К/Б — не пипаме
+  } else {
+    // Върнат като присъстващ — ако е X, изчистваме (не знаем каква смяна беше)
+    if (currentShift === 'X') {
+      delete db.schedules[key][uid][day];
+    }
+  }
+
+  saveDB(db);
+  renderAttendance();
+  // Ако графикът е отворен за текущия месец — опресняваме клетките на ред
+  if (schedYear===yr && schedMonth===mo) {
+    // Само обновяваме клетката в-place ако таблицата е видима
+    const span = document.querySelector(`#sched-table span[data-uid="${uid}"][data-day="${day}"]`);
+    if (span) {
+      const newShift = db.schedules[key][uid][day] || null;
+      const ss = newShift ? SHIFT_STYLE[newShift] : null;
+      span.textContent = newShift || '·';
+      span.style.color = ss ? ss.color : 'transparent';
+      const td = span.closest('td');
+      if (td) {
+        const dow = new Date(yr, mo, day).getDay();
+        td.style.background = ss ? ss.bg : (dow===0||dow===6) ? '#f5f4f0' : '';
+      }
+    }
+  }
+  renderTeamSelector(); updateBadges(); renderDashboard();
 }
 function markAll(val){
   const db=getDB();const today=todayStr();
   if(!db.attendance[today])db.attendance[today]={};
-  db.users.forEach(u=>{db.attendance[today][u.id]=val;});
+  db.users.forEach(u=>{ if(u.role!=='admin') db.attendance[today][u.id]=val; });
   saveDB(db);renderAttendance();renderTeamSelector();updateBadges();renderDashboard();
 }
+const ATT_GROUPS = [
+  { base:'pavlovo', squad:'dispatchers', label:'📍 База Павлово — Диспечери' },
+  { base:'svoboda', squad:'krumov',      label:'📍 База Свобода — Отряд Крумов' },
+  { base:'siniVir', squad:'krumov',      label:'📍 База Сини Вир — Отряд Крумов' },
+  { base:'pavlovo', squad:'gergov',      label:'📍 База Павлово — Отряд Гергов' },
+  { base:'pavlovo', squad:'lyubenov',    label:'📍 База Павлово — Отряд Любенов' },
+  { base:'mramor',  squad:'yankov',      label:'📍 База Мрамор — Отряд Янков' },
+  { base:'pavlovo', squad:'regular',     label:'📍 База Павлово — Редовна смяна' },
+];
+
 function renderAttendance(){
   const db=getDB();
-  const dispatchers=db.users.filter(u=>u.role==='dispatcher');
-  const workers=db.users.filter(u=>u.role==='worker');
-  document.getElementById('att-dispatchers').innerHTML=dispatchers.map(u=>pCardHTML(u,true)).join('');
-  document.getElementById('att-workers').innerHTML=workers.map(u=>pCardHTML(u,true)).join('');
   const all=db.users.filter(u=>u.role!=='admin');
+
+  // Брой хора чиято смяна е активна В МОМЕНТА (не само маркирани присъстващи)
+  const now=new Date();
+  const yr=now.getFullYear(), mo=now.getMonth(), day=now.getDate();
+  const schedData=getSchedData(yr, mo);
   const pCount=all.filter(u=>isPresent(u.id)).length;
   const total=all.length;
+  const h=now.getHours();
+
+  // Информационен ред за текущото времево окно
+  let timeInfo='';
+  if(h>=8&&h<17) timeInfo='<span style="font-size:11px;color:var(--text3);margin-left:8px;">🕐 08:00–17:00 — Редовна и Дневна смяна</span>';
+  else if(h>=17&&h<20) timeInfo='<span style="font-size:11px;color:var(--text3);margin-left:8px;">🕐 17:00–20:00 — Само Дневна смяна</span>';
+  else if(h>=20) timeInfo='<span style="font-size:11px;color:var(--text3);margin-left:8px;">🌙 20:00–08:00 — Нощна смяна</span>';
+  else timeInfo='<span style="font-size:11px;color:var(--amber);margin-left:8px;">🌙 00:00–08:00 — Нощна смяна (от вчера)</span>';
+
   document.getElementById('att-summary').innerHTML=`
     <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
       <div><span style="font-size:24px;font-weight:700;font-family:'Syne',sans-serif;">${pCount}</span> <span style="font-size:12px;color:var(--text2);">присъстват</span></div>
       <div><span style="font-size:24px;font-weight:700;font-family:'Syne',sans-serif;">${total-pCount}</span> <span style="font-size:12px;color:var(--text2);">отсъстват</span></div>
       <div style="flex:1;min-width:100px;"><div class="pb" style="margin-top:0;"><div class="pb-fill pb-blue" style="width:${total?Math.round(pCount/total*100):0}%"></div></div></div>
+      ${timeInfo}
     </div>`;
+
+  const groups=document.getElementById('att-groups');
+  if(!groups)return;
+  groups.innerHTML='';
+  ATT_GROUPS.forEach(g=>{
+    const people=db.users.filter(u=>u.base===g.base&&u.squad===g.squad);
+    if(!people.length)return;
+    const sec=document.createElement('div');
+    sec.style.marginBottom='20px';
+    sec.innerHTML=`<div class="section-lbl" style="margin-bottom:10px;"><span class="base-badge base-${g.base}">${g.label}</span></div>
+      <div class="ppl-grid">${people.map(u=>pCardHTML(u,true,schedData,day)).join('')}</div>`;
+    groups.appendChild(sec);
+  });
 }
-function pCardHTML(u,clickable){
+
+function pCardHTML(u, clickable, schedData, day){
   const present=isPresent(u.id);
   const [bg,tc]=avCol(u.id);
   const initials=u.fname[0]+(u.lname[0]||'');
   const oc=clickable?`onclick="toggleAtt('${u.id}')"` :'';
-  return `<div class="pcard ${present?'present':'absent'}" ${oc}>
+  const leaderOrders=[1,6,14,20,25];
+  const isLeader=leaderOrders.includes(u.order);
+
+  // Смяна от графика за днес
+  const shift = schedData ? ((schedData[u.id]||{})[day]||null) : null;
+  const ss = shift ? SHIFT_STYLE[shift] : null;
+
+  // Смяна badge — показваме смяната до статуса
+  let shiftBadge='';
+  if(shift && ss){
+    shiftBadge=`<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${ss.bg};color:${ss.color};margin-left:4px;">${shift}</span>`;
+  }
+
+  // Предупреждение: смяната планирана но все още не е започнала / вече е приключила
+  let timingNote='';
+  if(shift==='Д'&&present){
+    const h=new Date().getHours();
+    if(h<8) timingNote='<div style="font-size:10px;color:var(--amber);margin-top:1px;">⏳ Смяната започва в 08:00</div>';
+    else if(h>=20) timingNote='<div style="font-size:10px;color:var(--text3);margin-top:1px;">✓ Смяната приключи</div>';
+  } else if(shift==='Р'&&present){
+    const h=new Date().getHours();
+    if(h<8) timingNote='<div style="font-size:10px;color:var(--amber);margin-top:1px;">⏳ Смяната започва в 08:00</div>';
+    else if(h>=17) timingNote='<div style="font-size:10px;color:var(--text3);margin-top:1px;">✓ Смяната приключи</div>';
+  } else if(shift==='Н'&&present){
+    const h=new Date().getHours();
+    if(h<20&&h>=8) timingNote='<div style="font-size:10px;color:var(--amber);margin-top:1px;">⏳ Смяната започва в 20:00</div>';
+  }
+
+  // Карта е "затъмнена" ако смяната е планирана но не е в активния прозорец
+  const shiftPlanned = shift==='Д'||shift==='Н'||shift==='Р';
+  const shiftActive  = shift ? isShiftActive(shift) : false;
+  const dimmed = shiftPlanned && !shiftActive && present;
+
+  return `<div class="pcard ${present?'present':'absent'}" ${oc} style="${dimmed?'opacity:0.55;':''}">
     <div class="avatar" style="background:${bg};color:${tc}">${initials}</div>
     <div style="flex:1;min-width:0;">
-      <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u.fname)} ${esc(u.lname)}</div>
-      <div class="prole">${present?'✓ Присъства':'Отсъства'}</div>
+      <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        ${esc(u.fname)} ${esc(u.lname)}${isLeader?'<span class="squad-leader" style="margin-left:3px;">★</span>':''}${shiftBadge}
+      </div>
+      <div class="prole">${present?(shiftActive?'✓ На смяна':'⏳ Очаква смяна'):'Отсъства'}</div>
+      ${timingNote}
     </div>
   </div>`;
 }
+
 
 // ══════════════════════════════════════════════════════════════
 // DISPATCH
@@ -1568,6 +1815,7 @@ const SHIFT_STYLE = {
   'О': {bg:'#fef9c3', color:'#a16207', label:'Отпуска'},
   'К': {bg:'#ffedd5', color:'#c2410c', label:'Командировка'},
   'Б': {bg:'#fee2e2', color:'#991b1b', label:'Болничен'},
+  'X': {bg:'#1f2937', color:'#f9fafb', label:'Отсъства (извънредно)'},
 };
 const BG_DAYS = ['нд','пн','вт','ср','чт','пт','сб'];
 
@@ -1587,6 +1835,62 @@ function saveSchedData(year, month, data) {
   if (!db.schedules) db.schedules = {};
   db.schedules[getSchedKey(year, month)] = data;
   saveDB(db);
+}
+
+// ── Смяната активна ли е в момента? ──────────────────────────
+// Връща true ако текущия час е в работния прозорец на смяната
+function isShiftActive(shiftCode) {
+  const h = new Date().getHours();
+  if (shiftCode === 'Д') return h >= 8 && h < 20;   // 08:00–20:00
+  if (shiftCode === 'Н') return h >= 20 || h < 8;    // 20:00–08:00
+  if (shiftCode === 'Р') return h >= 8 && h < 17;    // 08:00–17:00
+  return false;
+}
+
+// ── Трябва ли да е "присъстващ" потребителят СЕГА? ───────────
+// Гледа графика за днес и текущия час
+function shouldBePresent(uid) {
+  const today = new Date();
+  const data = getSchedData(today.getFullYear(), today.getMonth());
+  const shift = (data[uid] || {})[today.getDate()] || null;
+  if (!shift) return false;
+  // X = отсъства извънредно — не е присъстващ
+  if (shift === 'X') return false;
+  // О, К, Б = не работи
+  if (['О','К','Б'].includes(shift)) return false;
+  // Активни смени — само ако е в работния прозорец
+  return isShiftActive(shift);
+}
+
+// ── Авто-приложи графика за днес при нова дата ───────────────
+const LAST_AUTO_APPLY_KEY = 'opsdesk_last_auto_apply';
+function autoApplyTodayIfNeeded() {
+  const today = todayStr();
+  const last = localStorage.getItem(LAST_AUTO_APPLY_KEY);
+  if (last === today) return; // вече е приложено за днес
+  const db = getDB();
+  const yr = new Date().getFullYear(), mo = new Date().getMonth(), day = new Date().getDate();
+  const data = getSchedData(yr, mo);
+  const staff = db.users.filter(u => u.role !== 'admin');
+  // Прилагаме само ако има въведени данни в графика за днес
+  const hasData = staff.some(u => data[u.id] && data[u.id][day] !== undefined);
+  if (!hasData) return;
+  if (!db.attendance[today]) db.attendance[today] = {};
+  staff.forEach(u => {
+    const shift = (data[u.id] || {})[day] || null;
+    // При автоматично прилагане — X означава вече ръчно отбелязан отсъстващ
+    if (shift === 'X') {
+      db.attendance[today][u.id] = false;
+    } else {
+      const present = shift === 'Д' || shift === 'Н' || shift === 'Р';
+      // Само ако все още не е ръчно зададено
+      if (db.attendance[today][u.id] === undefined) {
+        db.attendance[today][u.id] = present;
+      }
+    }
+  });
+  saveDB(db);
+  localStorage.setItem(LAST_AUTO_APPLY_KEY, today);
 }
 
 function schedPrevMonth() {
@@ -1615,8 +1919,8 @@ function renderSchedTable() {
   document.getElementById('sched-month-label').textContent = `${monthNames[schedMonth]} ${schedYear}`;
 
   // Header
-  let head = `<thead><tr>
-    <th style="position:sticky;left:0;z-index:10;background:var(--surface);border-bottom:2px solid var(--border);border-right:2px solid var(--border2);padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:170px;">Служител</th>`;
+  let head = `<tr>
+    <th style="position:sticky;left:0;z-index:10;background:var(--surface);border-bottom:2px solid var(--border);border-right:2px solid var(--border2);padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:190px;">Служител</th>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(schedYear, schedMonth, d).getDay();
     const isWeekend = dow === 0 || dow === 6;
@@ -1627,17 +1931,25 @@ function renderSchedTable() {
       <div style="font-size:9px;opacity:.7;">${BG_DAYS[dow]}</div>
     </th>`;
   }
-  head += `</tr></thead>`;
 
-  const renderGroup = (people, groupLabel) => {
-    let rows = `<tr><td colspan="${daysInMonth+1}" style="background:var(--surface2);padding:5px 12px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);border-right:1px solid var(--border);">${groupLabel}</td></tr>`;
+  const renderGroup = (people, groupLabel, baseCls) => {
+    const labelBg = baseCls ? `class="base-badge ${baseCls}"` : '';
+    let rows = `<tr><td colspan="${daysInMonth+1}" style="background:var(--surface2);padding:5px 12px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);">
+      <span ${labelBg}>${groupLabel}</span>
+    </td></tr>`;
     for (const u of people) {
       const [bg, tc] = avCol(u.id);
+      const isLeader = Object.values(SQUADS).some(s => s.leader === u.id);
+      const regularOnly = REGULAR_ONLY_IDS.has(u.id);
       rows += `<tr>
         <td style="position:sticky;left:0;z-index:5;background:var(--surface);border-right:2px solid var(--border2);border-bottom:1px solid var(--border);padding:5px 10px;white-space:nowrap;">
           <div style="display:flex;align-items:center;gap:7px;">
             <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-            <span style="font-size:12px;font-weight:600;">${esc(u.fname)} ${esc(u.lname)}</span>
+            <div>
+              <span style="font-size:12px;font-weight:600;">${esc(u.fname)} ${esc(u.lname)}</span>
+              ${isLeader ? '<span class="squad-leader">★</span>' : ''}
+              ${regularOnly ? '<span style="font-size:9px;color:var(--text3);margin-left:3px;">Р</span>' : ''}
+            </div>
           </div>
         </td>`;
       for (let d = 1; d <= daysInMonth; d++) {
@@ -1657,9 +1969,17 @@ function renderSchedTable() {
     return rows;
   };
 
-  document.getElementById('sched-table').innerHTML = `<thead>${head}</thead><tbody>
-    ${renderGroup(dispatchers, 'Диспечери')}
-    ${renderGroup(workers, 'Работници')}
+  // Group workers by squad/base
+  const bySquad = id => workers.filter(u => u.squad === id);
+
+  document.getElementById('sched-table').innerHTML = `<thead><tr>${head}</tr></thead><tbody>
+    ${renderGroup(dispatchers, '📍 База Павлово — Диспечери', 'base-pavlovo')}
+    ${renderGroup(bySquad('krumov').filter(u=>u.base==='svoboda'), '📍 База Свобода — Отряд Крумов', 'base-svoboda')}
+    ${renderGroup(bySquad('krumov').filter(u=>u.base==='siniVir'), '📍 База Сини Вир — Отряд Крумов', 'base-siniVir')}
+    ${renderGroup(bySquad('gergov'), '📍 База Павлово — Отряд Гергов', 'base-pavlovo')}
+    ${renderGroup(bySquad('lyubenov'), '📍 База Павлово — Отряд Любенов', 'base-pavlovo')}
+    ${renderGroup(bySquad('yankov'), '📍 База Мрамор — Отряд Янков', 'base-mramor')}
+    ${renderGroup(bySquad('regular'), '📍 База Павлово — Редовна смяна', 'base-pavlovo')}
   </tbody>`;
 }
 
@@ -1670,16 +1990,20 @@ function openShiftPicker(userId, day, td) {
   _pickerUid = userId; _pickerDay = day; _pickerTd = td;
   const data = getSchedData(schedYear, schedMonth);
   const cur = (data[userId] || {})[day] || null;
+  const regularOnly = REGULAR_ONLY_IDS.has(userId);
 
-  const options = [
-    {code: null, label: 'Почивен',      bg:'var(--surface2)', color:'var(--text2)'},
-    {code: 'Д',  label: 'Д — Дневна 08–20',  bg:'#dbeafe', color:'#1d4ed8'},
-    {code: 'Н',  label: 'Н — Нощна 20–08',   bg:'#ede9fe', color:'#6d28d9'},
-    {code: 'Р',  label: 'Р — Редовна 08–17', bg:'#dcfce7', color:'#15803d'},
-    {code: 'О',  label: 'О — Отпуска',       bg:'#fef9c3', color:'#a16207'},
-    {code: 'К',  label: 'К — Командировка',  bg:'#ffedd5', color:'#c2410c'},
-    {code: 'Б',  label: 'Б — Болничен',      bg:'#fee2e2', color:'#991b1b'},
+  let options = [
+    {code: null, label: 'Почивен',                  bg:'var(--surface2)', color:'var(--text2)'},
+    {code: 'Д',  label: 'Д — Дневна 08–20',         bg:'#dbeafe', color:'#1d4ed8'},
+    {code: 'Н',  label: 'Н — Нощна 20–08',          bg:'#ede9fe', color:'#6d28d9'},
+    {code: 'Р',  label: 'Р — Редовна 08–17',        bg:'#dcfce7', color:'#15803d'},
+    {code: 'О',  label: 'О — Отпуска',              bg:'#fef9c3', color:'#a16207'},
+    {code: 'К',  label: 'К — Командировка',         bg:'#ffedd5', color:'#c2410c'},
+    {code: 'Б',  label: 'Б — Болничен',             bg:'#fee2e2', color:'#991b1b'},
+    {code: 'X',  label: 'X — Отсъства (извънредно)',bg:'#1f2937', color:'#f9fafb'},
   ];
+  // Редовна смяна — само Р, О, К, Б, X (без Д и Н)
+  if (regularOnly) options = options.filter(o => o.code !== 'Д' && o.code !== 'Н');
 
   const rect = td.getBoundingClientRect();
   const picker = document.getElementById('shift-picker');
@@ -1715,6 +2039,35 @@ function selectShift(code) {
     data[_pickerUid][_pickerDay] = code;
   }
   saveSchedData(schedYear, schedMonth, data);
+
+  // ── Корелация График → Присъствие (само за днешния ден) ──────
+  const today = new Date();
+  const isToday = schedYear === today.getFullYear() &&
+                  schedMonth === today.getMonth() &&
+                  _pickerDay === today.getDate();
+  if (isToday) {
+    const db = getDB();
+    const todayKey = todayStr();
+    if (!db.attendance[todayKey]) db.attendance[todayKey] = {};
+    if (code === null) {
+      // Изчистена смяна — маркираме като отсъстващ
+      db.attendance[todayKey][_pickerUid] = false;
+    } else if (['О','К','Б'].includes(code)) {
+      // Отпуска/командировка/болничен — отсъства
+      db.attendance[todayKey][_pickerUid] = false;
+    } else if (code === 'X') {
+      // Ръчно отбелязан отсъстващ
+      db.attendance[todayKey][_pickerUid] = false;
+    } else {
+      // Д, Н, Р — присъства само ако смяната е активна в момента
+      db.attendance[todayKey][_pickerUid] = isShiftActive(code);
+    }
+    saveDB(db);
+    renderAttendance();
+    renderTeamSelector();
+    updateBadges();
+    renderDashboard();
+  }
 
   // Update cell in-place
   const span = _pickerTd.querySelector('span');
@@ -1765,16 +2118,25 @@ function applyTodayFromSchedule() {
   let presentCount = 0;
   staff.forEach(u => {
     const shift = (data[u.id] || {})[d] || null;
-    const present = shift === 'Д' || shift === 'Н' || shift === 'Р';
-    db.attendance[todayKey][u.id] = present;
-    if (present) presentCount++;
+    // X = отсъства извънредно
+    if (shift === 'X') {
+      db.attendance[todayKey][u.id] = false;
+    } else if (!shift || ['О','К','Б'].includes(shift)) {
+      db.attendance[todayKey][u.id] = false;
+    } else {
+      // Д/Н/Р — маркираме като присъстващ САМО ако смяната е активна сега
+      const active = isShiftActive(shift);
+      db.attendance[todayKey][u.id] = active;
+      if (active) presentCount++;
+    }
   });
+  localStorage.setItem(LAST_AUTO_APPLY_KEY, todayKey);
   saveDB(db);
   renderAttendance();
   renderTeamSelector();
   updateBadges();
   renderDashboard();
-  showNotif('✅','Присъствието е приложено',`${presentCount} присъстващи за днес от графика.`,'nt-ok');
+  showNotif('✅','Присъствието е приложено',`${presentCount} активни смени в момента.`,'nt-ok');
   showSection('attendance');
 }
 
@@ -1835,7 +2197,10 @@ function renderTeams() {
       if (mobile) {
         return `<div style="display:flex;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid var(--border);">
           <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-          <span style="font-size:13px;font-weight:500;flex:1;">${esc(u.fname)} ${esc(u.lname)}</span>
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+            ${u.base&&BASES[u.base]?`<br><span class="base-badge base-${u.base}" style="font-size:9px;">${BASES[u.base].label}</span>`:''}
+          </div>
           ${showAddBtn ? `<button class="btn btn-xs btn-primary" onclick="mobileAddToTeam('${u.id}')" style="flex-shrink:0;">+ Добави</button>` : ''}
         </div>`;
       }
@@ -1848,7 +2213,10 @@ function renderTeams() {
           style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;cursor:grab;">
         <span style="font-size:16px;color:var(--text3);line-height:1;">⠿</span>
         <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-        <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+        <div style="flex:1;min-width:0;">
+          <span style="font-size:13px;font-weight:500;">${esc(u.fname)} ${esc(u.lname)}</span>
+          ${u.base&&BASES[u.base]?`<span class="base-badge base-${u.base}" style="font-size:9px;margin-left:4px;">${BASES[u.base].label}</span>`:''}
+        </div>
       </div>`;
     }).join('');
   }
@@ -1894,16 +2262,17 @@ function renderTeams() {
       const u = db.users.find(x => x.id === id);
       if (!u) return '';
       const [bg, tc] = avCol(u.id);
+      const baseBadge = u.base&&BASES[u.base] ? `<span class="base-badge base-${u.base}" style="font-size:9px;margin-left:4px;">${BASES[u.base].label}</span>` : '';
       if (busy) {
         return `<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;opacity:.75;">
           <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-          <span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>
+          <span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>${baseBadge}
         </div>`;
       }
       if (mobile) {
         return `<div style="display:flex;align-items:center;gap:8px;padding:8px 8px;border-bottom:1px solid var(--border);">
           <div class="avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-          <span style="font-size:13px;flex:1;">${esc(u.fname)} ${esc(u.lname)}</span>
+          <div style="flex:1;min-width:0;"><span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>${baseBadge}</div>
           <button class="btn btn-xs btn-red" onclick="mobileRemoveFromTeam('${u.id}',${idx})" style="flex-shrink:0;padding:2px 7px;">×</button>
         </div>`;
       }
@@ -1916,7 +2285,7 @@ function renderTeams() {
           style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);border-radius:4px;cursor:grab;">
         <span style="font-size:16px;color:var(--text3);line-height:1;">⠿</span>
         <div class="avatar" style="width:24px;height:24px;font-size:10px;flex-shrink:0;background:${bg};color:${tc}">${u.fname[0]}${u.lname[0]||''}</div>
-        <span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>
+        <div style="flex:1;min-width:0;"><span style="font-size:13px;">${esc(u.fname)} ${esc(u.lname)}</span>${baseBadge}</div>
       </div>`;
     }).join('');
 
@@ -1942,6 +2311,13 @@ function renderTeams() {
     const disbandBtn = (!busy && !mobile) ? `<button class="btn btn-xs btn-red" onclick="disbandTeam(${idx})" title="Разформировай екипа">✕ Разформировай</button>` : '';
     const mobileDisbandBtn = (mobile && !busy && isSelected) ? `<button class="btn btn-xs btn-red" onclick="event.stopPropagation();disbandTeam(${idx})" style="flex-shrink:0;">✕</button>` : '';
 
+    // Determine team base from majority of members
+    const memberBases = team.members.map(id => db.users.find(x=>x.id===id)?.base).filter(Boolean);
+    const baseCounts = {};
+    memberBases.forEach(b => { baseCounts[b] = (baseCounts[b]||0)+1; });
+    const teamBase = Object.entries(baseCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || vehicle?.base || null;
+    const teamBaseBadge = teamBase&&BASES[teamBase] ? `<span class="base-badge base-${teamBase}" style="margin-left:6px;">${BASES[teamBase].label}</span>` : '';
+
     return `<div class="${busy || mobile ? 'card' : 'team-drop-zone card'}"
         data-team="${idx}"
         ${mobileSelectAttr}
@@ -1949,9 +2325,9 @@ function renderTeams() {
         style="margin-bottom:12px;border:2px solid ${cardBorder};background:${cardBg};transition:border-color .2s,background .2s;${mobile && !busy ? 'cursor:pointer;' : ''}">
       <div class="card-hd" style="margin-bottom:4px;">
         <div style="flex:1;min-width:0;">
-          <div class="card-title">Екип ${idx + 1} <span style="font-size:12px;font-weight:400;color:var(--text3);">(${team.members.length} чл.)</span></div>
+          <div class="card-title" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">Екип ${idx + 1} <span style="font-size:12px;font-weight:400;color:var(--text3);">(${team.members.length} чл.)</span>${teamBaseBadge}</div>
           ${vehicle
-            ? `<div class="card-sub" onclick="event.stopPropagation();showVehicleEquip('${vehicle.id}')" style="cursor:pointer;color:var(--accent);" title="Виж оборудването">🚗 ${esc(vehicle.name)}${vehicle.plate?' · '+esc(vehicle.plate):''}</div>`
+            ? `<div class="card-sub" onclick="event.stopPropagation();showVehicleEquip('${vehicle.id}')" style="cursor:pointer;color:var(--accent);" title="Виж оборудването">🚗 ${esc(vehicle.name)}${vehicle.plate?' · '+esc(vehicle.plate):''}${vehicle.base&&BASES[vehicle.base]?' · '+BASES[vehicle.base].label:''}</div>`
             : '<div class="card-sub" style="color:var(--text3);">Без автомобил</div>'}
         </div>
         ${mobileDoneBtn}
@@ -1992,6 +2368,7 @@ function renderTeamsVehicles() {
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;">${esc(v.name)}</div>
         ${v.plate ? `<div style="font-size:11px;color:var(--text3);">${esc(v.plate)}</div>` : ''}
+        ${v.base&&BASES[v.base]?`<span class="base-badge base-${v.base}" style="font-size:9px;">${BASES[v.base].label}</span>`:''}
       </div>
       ${used ? '' : `<button class="btn btn-xs btn-ghost" onclick="vehicleQuickAdd('${v.id}')" title="Добави като нов екип" style="flex-shrink:0;font-size:16px;line-height:1;padding:2px 7px;">+</button>`}
     </div>`;
@@ -2477,18 +2854,26 @@ function selectDispatchTeam(teamId) {
 // АВТОМОБИЛИ
 // ══════════════════════════════════════════════════════════════
 const DEFAULT_VEHICLES = [
-  'Тойота 03','Тойота 33','Нисан Навара','Форд Рейнджър','Оранжев Форд',
-  'Вишка','Стара вишка','Рено Трафик','Рено Мастър','Опел Самосвал','Бус Опел'
+  { name:'Тойота 03',     base:'pavlovo' },
+  { name:'Тойота 33',     base:'pavlovo' },
+  { name:'Нисан Навара',  base:'pavlovo' },
+  { name:'Форд Рейнджър', base:'pavlovo' },
+  { name:'Оранжев Форд',  base:'pavlovo' },
+  { name:'Вишка',         base:'pavlovo' },
+  { name:'Стара вишка',   base:'pavlovo' },
+  { name:'Рено Трафик',   base:'pavlovo' },
+  { name:'Рено Мастър',   base:'pavlovo' },
+  { name:'Опел Самосвал', base:'pavlovo' },
+  { name:'Бус Опел',      base:'pavlovo' },
 ];
 
 function getVehicles() {
   const db = getDB();
   if (!db.vehicles) {
-    db.vehicles = DEFAULT_VEHICLES.map((name, i) => ({ id: 'v' + i, name, plate: '', equipment: [] }));
+    db.vehicles = DEFAULT_VEHICLES.map((v, i) => ({ id: 'v' + i, name: v.name, base: v.base, plate: '', equipment: [] }));
     saveDB(db);
   }
   db.vehicles.forEach(v => { if (!v.equipment) v.equipment = []; });
-  // Sort: vehicles with createdAt (newly added) first, then defaults (no createdAt) in original order
   return [...db.vehicles].sort((a, b) => {
     if (a.createdAt && b.createdAt) return b.createdAt - a.createdAt;
     if (a.createdAt) return -1;
@@ -2507,11 +2892,12 @@ function renderVehicles() {
   }
   // Newest first — unshift ensures new vehicles are at index 0
   el.innerHTML = `<div style="overflow-x:auto;"><table class="admin-table">
-    <thead><tr><th>#</th><th>Наименование</th><th>Рег. номер</th><th>Оборудване</th><th>Действия</th></tr></thead>
+    <thead><tr><th>#</th><th>Наименование</th><th>Рег. номер</th><th>База</th><th>Оборудване</th><th>Действия</th></tr></thead>
     <tbody>${vehicles.map((v, i) => `<tr>
       <td style="color:var(--text3);font-size:12px;">${i + 1}</td>
       <td style="font-weight:600;">${esc(v.name)}</td>
       <td class="mono" style="font-size:12px;color:var(--text2);">${esc(v.plate || '—')}</td>
+      <td>${v.base&&BASES[v.base]?`<span class="base-badge base-${v.base}">${BASES[v.base].label}</span>`:'<span style="color:var(--text3);font-size:12px;">—</span>'}</td>
       <td>
         <span style="font-size:12px;color:var(--text2);">${v.equipment.length} бр.</span>
         <button class="btn btn-xs btn-ghost" style="margin-left:6px;" onclick="openEquipmentEditModal('${v.id}')">📋 Оборудване</button>
@@ -2530,6 +2916,7 @@ function openVehicleModal(vehicleId) {
   document.getElementById('modal-vehicle-title').textContent = v ? 'Редактирай автомобил' : 'Нов автомобил';
   document.getElementById('v-name').value = v ? v.name : '';
   document.getElementById('v-plate').value = v ? v.plate : '';
+  document.getElementById('v-base').value = v ? (v.base || '') : '';
   document.getElementById('v-edit-id').value = v ? v.id : '';
   document.getElementById('modal-vehicle').style.display = 'flex';
 }
@@ -2537,16 +2924,17 @@ function openVehicleModal(vehicleId) {
 function saveVehicle() {
   const name = document.getElementById('v-name').value.trim();
   const plate = document.getElementById('v-plate').value.trim();
+  const base  = document.getElementById('v-base').value;
   const editId = document.getElementById('v-edit-id').value;
   if (!name) { showNotif('⚠️','Липсва наименование','Въведете наименование на автомобила.','nt-warn'); return; }
   const db = getDB();
   if (!db.vehicles) db.vehicles = [];
   if (editId) {
     const v = db.vehicles.find(x => x.id === editId);
-    if (v) { v.name = name; v.plate = plate; }
+    if (v) { v.name = name; v.plate = plate; v.base = base; }
     showNotif('🚗','Обновен',name,'nt-ok');
   } else {
-    db.vehicles.unshift({ id: 'v' + uid(), name, plate, equipment: [], createdAt: Date.now() });
+    db.vehicles.unshift({ id: 'v' + uid(), name, plate, base, equipment: [], createdAt: Date.now() });
     showNotif('🚗','Добавен',name,'nt-ok');
   }
   saveDB(db);
